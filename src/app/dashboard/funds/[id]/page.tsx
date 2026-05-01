@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
@@ -63,7 +63,6 @@ const STATUS_BORDER: Record<string, string> = {
 
 export default function FundDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params.id as string
 
   // Data

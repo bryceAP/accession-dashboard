@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
 
@@ -27,7 +26,6 @@ const STATUS_COLOR: Record<string, string> = {
 export default function ReportsPage() {
   const [runs, setRuns] = useState<Run[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     fetch('/api/reports')
