@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
 
@@ -271,9 +272,9 @@ function FundTable({
             </td>
             <td className="text-xs py-4">
               <div className="flex gap-5">
-                <button className="text-[#555555] hover:text-[#E8E0D0] tracking-widest transition-colors">
+                <Link href={`/dashboard/funds/${fund.id}`} className="text-[#555555] hover:text-[#E8E0D0] tracking-widest transition-colors">
                   VIEW
-                </button>
+                </Link>
                 <button className="text-[#555555] hover:text-[#C9A84C] tracking-widest transition-colors">
                   RE-RUN
                 </button>
