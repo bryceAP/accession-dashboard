@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       fund_id: fundId,
       file_name: file.name,
       document_type: documentType,
-      storage_path: storagePath,
+      file_path: storagePath,
       file_size: file.size,
     })
     .select()

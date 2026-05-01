@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateFundReport } from "@/lib/anthropic/generate";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require("pdf-parse/lib/pdf-parse");
+
 export const maxDuration = 120;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const TEN_MB = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const { fund_id, run_id, fund_name, manager, document_paths } =
@@ -21,9 +26,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Download each document from Supabase Storage
-    const documents: { base64: string; filename: string; mediaType: string }[] =
-      [];
+    const documents: Array<
+      { type: "pdf"; base64: string; filename: string } |
+      { type: "text"; text: string; filename: string }
+    > = [];
 
     for (const storagePath of document_paths ?? []) {
       const { data: fileData, error: downloadError } = await supabase.storage
@@ -36,11 +42,15 @@ export async function POST(request: Request) {
       }
 
       const bytes = await fileData.arrayBuffer();
-      documents.push({
-        base64: Buffer.from(bytes).toString("base64"),
-        filename: (storagePath as string).split("/").pop() ?? storagePath,
-        mediaType: "application/pdf",
-      });
+      const buffer = Buffer.from(bytes);
+      const filename = (storagePath as string).split("/").pop() ?? storagePath;
+
+      if (buffer.byteLength <= TEN_MB) {
+        documents.push({ type: "pdf", base64: buffer.toString("base64"), filename });
+      } else {
+        const parsed = await pdfParse(buffer);
+        documents.push({ type: "text", text: parsed.text, filename });
+      }
     }
 
     const report = await generateFundReport({ fund_name, manager, documents });

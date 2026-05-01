@@ -27,7 +27,7 @@ interface FundDocument {
   fund_id: string
   file_name: string
   document_type: string
-  storage_path: string
+  file_path: string
   file_size: number | null
   created_at: string
 }
@@ -231,6 +231,13 @@ export default function FundDetailPage() {
     )
   }
 
+  const handleDeleteRun = async (runId: string) => {
+    if (!confirm('Delete this report?')) return
+    await fetch(`/api/runs/${runId}`, { method: 'DELETE' })
+    setRuns((prev) => prev.filter((r) => r.id !== runId))
+    if (expandedRunId === runId) setExpandedRunId(null)
+  }
+
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault()
     setRunning(true)
@@ -362,7 +369,7 @@ export default function FundDetailPage() {
                       {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB` : '—'}
                     </td>
                     <td className="text-[#555555] text-xs py-3.5 pr-6 whitespace-nowrap">
-                      {format(new Date(doc.created_at), 'MMM d, yyyy')}
+                      {(() => { const d = new Date(doc.created_at); return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, yyyy') })()}
                     </td>
                     <td className="py-3.5">
                       <button
@@ -420,6 +427,12 @@ export default function FundDetailPage() {
                       >
                         VIEW →
                       </Link>
+                      <button
+                        onClick={() => handleDeleteRun(run.id)}
+                        className="border-l border-[#2a2a2a] px-5 py-4 text-xs tracking-widest text-[#444444] hover:text-red-500 hover:bg-[#131313] transition-colors flex-shrink-0"
+                      >
+                        DELETE
+                      </button>
                     </div>
 
                     {expanded && run.report_text && (

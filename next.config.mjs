@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['pdf-lib'],
+  experimental: {
+    serverComponentsExternalPackages: ['pdf-lib', 'pdf-parse'],
+  },
 };
 
 export default nextConfig;

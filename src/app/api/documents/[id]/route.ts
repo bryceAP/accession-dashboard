@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   const { data: doc, error: fetchError } = await supabase
     .from('fund_documents')
-    .select('storage_path')
+    .select('file_path')
     .eq('id', params.id)
     .single()
 
@@ -15,7 +15,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Document not found' }, { status: 404 })
   }
 
-  await supabase.storage.from('fund-documents').remove([doc.storage_path])
+  await supabase.storage.from('fund-documents').remove([doc.file_path])
 
   const { error } = await supabase
     .from('fund_documents')

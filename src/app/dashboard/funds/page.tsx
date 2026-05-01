@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
 
@@ -33,6 +34,7 @@ const COLS = ['FUND NAME', 'MANAGER', 'STRATEGY', 'LAST RUN', 'STATUS', 'ACTIONS
 const emptyForm = { name: '', manager: '', strategy: 'Private Credit', ticker: '', isin: '' }
 
 export default function FundsPage() {
+  const router = useRouter()
   const [funds, setFunds] = useState<Fund[]>([])
   const [pageLoading, setPageLoading] = useState(true)
   const [fetchError, setFetchError] = useState('')
@@ -201,7 +203,7 @@ export default function FundsPage() {
             <p className="text-[#555555] text-xs tracking-widest mb-6">WHAT WOULD YOU LIKE TO DO NEXT?</p>
             <div className="flex gap-3 justify-center">
               <button
-                onClick={() => setPostSave(null)}
+                onClick={() => router.push(`/dashboard/funds/${postSave.id}`)}
                 className="border border-[#2a2a2a] text-[#999999] text-xs tracking-widest px-5 py-2.5 hover:border-[#3a3a3a] hover:text-[#E8E0D0] transition-colors"
               >
                 UPLOAD DOCUMENTS

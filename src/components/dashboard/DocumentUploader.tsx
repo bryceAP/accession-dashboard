@@ -23,7 +23,7 @@ interface FundDocument {
   fund_id: string
   file_name: string
   document_type: string
-  storage_path: string
+  file_path: string
   file_size: number | null
   created_at: string
 }

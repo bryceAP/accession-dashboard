@@ -2,16 +2,13 @@ import { anthropic } from "./client";
 import { PRIVATE_CREDIT_SYSTEM_PROMPT } from "./prompts";
 import type { FundReport } from "@/types";
 
-interface Document {
-  base64: string;
-  filename: string;
-  mediaType: string;
-}
+type PdfDocument = { type: "pdf"; base64: string; filename: string };
+type TextDocument = { type: "text"; text: string; filename: string };
 
 interface GenerateParams {
   fund_name: string;
   manager?: string | null;
-  documents: Document[];
+  documents: Array<PdfDocument | TextDocument>;
 }
 
 export async function generateFundReport({
@@ -23,15 +20,22 @@ export async function generateFundReport({
   const content: any[] = [];
 
   for (const doc of documents) {
-    content.push({
-      type: "document",
-      source: {
-        type: "base64",
-        media_type: doc.mediaType,
-        data: doc.base64,
-      },
-      title: doc.filename,
-    });
+    if (doc.type === "pdf") {
+      content.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: doc.base64,
+        },
+        title: doc.filename,
+      });
+    } else {
+      content.push({
+        type: "text",
+        text: `=== DOCUMENT: ${doc.filename} ===\n${doc.text}\n=== END DOCUMENT ===`,
+      });
+    }
   }
 
   const fundLine = [

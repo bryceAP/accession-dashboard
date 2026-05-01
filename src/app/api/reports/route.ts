@@ -1,30 +1,22 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET() {
   const { data, error } = await supabase
     .from('dashboard_runs')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+    .select('*, funds(name)')
+    .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'Run not found' }, { status: 404 })
-
-  return NextResponse.json(data)
+  return NextResponse.json({ runs: data ?? [] })
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request) {
+  const { id } = await request.json()
   const { error } = await supabase
     .from('dashboard_runs')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

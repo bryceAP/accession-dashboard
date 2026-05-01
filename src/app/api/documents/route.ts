@@ -5,14 +5,23 @@ export async function GET(request: Request) {
   const fundId = new URL(request.url).searchParams.get('fund_id')
   if (!fundId) return NextResponse.json({ error: 'fund_id required' }, { status: 400 })
 
-  const { data, error } = await supabase
-    .from('fund_documents')
-    .select('*')
-    .eq('fund_id', fundId)
-    .order('created_at', { ascending: false })
+  try {
+    const { data, error } = await supabase
+      .from('fund_documents')
+      .select('*')
+      .eq('fund_id', fundId)
+      .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+    if (error) {
+      console.error('GET /api/documents supabase error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(data ?? [])
+  } catch (err) {
+    console.error('GET /api/documents unexpected error:', err)
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to fetch documents' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
@@ -36,7 +45,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from('fund_documents')
-    .insert({ fund_id: fundId, file_name: file.name, document_type: documentType, storage_path: storagePath, file_size: file.size })
+    .insert({ fund_id: fundId, file_name: file.name, document_type: documentType, file_path: storagePath, file_size: file.size })
     .select()
     .single()
 

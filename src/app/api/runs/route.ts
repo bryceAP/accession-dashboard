@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { generateFundReport } from '@/lib/anthropic/generate'
 import { compareRuns } from '@/lib/compareRuns'
 import type { FundReport } from '@/types'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-parse/lib/pdf-parse')
 
 export const maxDuration = 120
 
@@ -41,26 +43,39 @@ export async function POST(request: Request) {
       .eq('id', fund_id)
       .single()
 
-    const documents: { base64: string; filename: string; mediaType: string }[] = []
+    const documents: Array<
+      { type: 'pdf'; base64: string; filename: string } |
+      { type: 'text'; text: string; filename: string }
+    > = []
+
+    const TEN_MB = 10 * 1024 * 1024
 
     if (Array.isArray(document_ids) && document_ids.length > 0) {
       const { data: docs } = await supabase
         .from('fund_documents')
-        .select('file_name, storage_path, document_type')
+        .select('file_name, file_path, document_type')
         .in('id', document_ids)
 
       for (const doc of docs ?? []) {
-        const { data: fileData } = await supabase.storage
+        const { data: fileData, error: downloadError } = await supabase.storage
           .from('fund-documents')
-          .download(doc.storage_path)
+          .download(doc.file_path)
+
+        if (downloadError) {
+          console.error(`Storage download failed for ${doc.file_path}:`, downloadError)
+        }
 
         if (fileData) {
           const bytes = await fileData.arrayBuffer()
-          documents.push({
-            base64: Buffer.from(bytes).toString('base64'),
-            filename: `${doc.document_type}: ${doc.file_name}`,
-            mediaType: 'application/pdf',
-          })
+          const buffer = Buffer.from(bytes)
+          const filename = `${doc.document_type}: ${doc.file_name}`
+
+          if (buffer.byteLength <= TEN_MB) {
+            documents.push({ type: 'pdf', base64: buffer.toString('base64'), filename })
+          } else {
+            const parsed = await pdfParse(buffer)
+            documents.push({ type: 'text', text: parsed.text, filename })
+          }
         }
       }
     }
@@ -123,6 +138,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(completedRun)
   } catch (err) {
+    console.error('POST /api/runs failed:', err)
+
     await supabase.from('dashboard_runs').update({ status: 'error' }).eq('id', run.id)
     await supabase.from('funds').update({ status: 'error' }).eq('id', fund_id)
 
