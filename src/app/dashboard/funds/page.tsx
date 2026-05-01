@@ -46,10 +46,11 @@ export default function FundsPage() {
   const fetchFunds = useCallback(async () => {
     try {
       const res = await fetch('/api/funds')
-      if (!res.ok) throw new Error()
-      setFunds(await res.json())
-    } catch {
-      setFetchError('Failed to load funds.')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`)
+      setFunds(json)
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : 'Failed to load funds.')
     } finally {
       setPageLoading(false)
     }
