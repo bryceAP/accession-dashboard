@@ -394,25 +394,33 @@ export default function FundDetailPage() {
                 const expanded = expandedRunId === run.id
                 return (
                   <div key={run.id} className="border border-[#2a2a2a]">
-                    <button
-                      onClick={() => setExpandedRunId(expanded ? null : run.id)}
-                      className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#131313] transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-6">
-                        <span className="text-[#E8E0D0] text-xs">
-                          {format(new Date(run.created_at), 'MMM d, yyyy · HH:mm')}
-                        </span>
-                        <span className={`text-xs tracking-widest ${STATUS_COLOR[run.status] ?? 'text-[#555555]'}`}>
-                          {run.status.toUpperCase()}
-                        </span>
-                        {run.input_tokens != null && (
-                          <span className="text-[#444444] text-xs">
-                            {((run.input_tokens + (run.output_tokens ?? 0)) / 1000).toFixed(1)}k tokens
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => setExpandedRunId(expanded ? null : run.id)}
+                        className="flex-1 flex items-center justify-between px-6 py-4 hover:bg-[#131313] transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-6">
+                          <span className="text-[#E8E0D0] text-xs">
+                            {format(new Date(run.created_at), 'MMM d, yyyy · HH:mm')}
                           </span>
-                        )}
-                      </div>
-                      <span className="text-[#444444] text-xs">{expanded ? '▲' : '▼'}</span>
-                    </button>
+                          <span className={`text-xs tracking-widest ${STATUS_COLOR[run.status] ?? 'text-[#555555]'}`}>
+                            {run.status.toUpperCase()}
+                          </span>
+                          {run.input_tokens != null && (
+                            <span className="text-[#444444] text-xs">
+                              {((run.input_tokens + (run.output_tokens ?? 0)) / 1000).toFixed(1)}k tokens
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[#444444] text-xs">{expanded ? '▲' : '▼'}</span>
+                      </button>
+                      <Link
+                        href={`/dashboard/funds/${id}/run/${run.id}`}
+                        className="border-l border-[#2a2a2a] px-5 py-4 text-xs tracking-widest text-[#555555] hover:text-[#C9A84C] hover:bg-[#131313] transition-colors flex-shrink-0"
+                      >
+                        VIEW →
+                      </Link>
+                    </div>
 
                     {expanded && run.report_text && (
                       <div className="border-t border-[#2a2a2a] px-8 py-6 bg-[#0a0a0a]">
