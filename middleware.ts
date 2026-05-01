@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  const authCookie = request.cookies.get('ap_auth')
+  const session = request.cookies.get('ap-session')
 
-  if (!authCookie) {
-    return NextResponse.redirect(new URL('/', request.url))
+  if (session?.value !== 'authenticated') {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return NextResponse.next()
