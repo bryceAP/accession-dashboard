@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="px-6 py-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/White V2.png" alt="Accession Partners" style={{ maxWidth: 100 }} />
+          <img src="/White V2.png" alt="Accession Partners" style={{ maxWidth: 28 }} />
         </div>
         <div style={{ height: 1, background: '#1e1e1e' }} />
 
