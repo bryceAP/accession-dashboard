@@ -32,17 +32,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
-      <div className="w-full max-w-[400px] border border-[#2a2a2a] p-10">
-        <div className="mb-8">
-          <p className={`${jetbrainsMono.className} text-xs tracking-widest`}>
-            <span className="text-[#999999]">ACCESSION</span>
-            <span className="text-[#C9A84C]"> PARTNERS</span>
-          </p>
-          <p className="text-[#444444] text-sm mt-2">Fund Research Platform</p>
-        </div>
+    <div
+      className={`${jetbrainsMono.className} min-h-screen flex flex-col items-center justify-center`}
+      style={{ background: '#0A0A0A' }}
+    >
+      <div className="flex flex-col items-center w-full max-w-[360px] px-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/Accession Partners Logo.jpg"
+          alt="Accession Partners"
+          style={{ maxWidth: 220, marginBottom: 24 }}
+        />
+        <p style={{ color: '#666666', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 8 }}>
+          Fund Research Platform
+        </p>
+        <p style={{ color: '#444444', fontSize: 10, letterSpacing: '0.1em', marginBottom: 40 }}>
+          Authorized Access Only
+        </p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="w-full">
           <input
             type="password"
             value={password}
@@ -58,11 +66,22 @@ export default function LoginPage() {
           >
             {loading ? '...' : 'Enter'}
           </button>
-          {error && (
-            <p className="text-red-500 text-xs mt-2">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
         </form>
       </div>
+
+      <p
+        style={{
+          color: '#333333',
+          fontSize: 9,
+          letterSpacing: '0.08em',
+          position: 'fixed',
+          bottom: 24,
+          textAlign: 'center',
+        }}
+      >
+        Accession Partners LLC · Registered Investment Adviser · Colorado
+      </p>
     </div>
   )
 }

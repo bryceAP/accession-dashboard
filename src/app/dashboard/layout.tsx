@@ -23,15 +23,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      {/* Fixed sidebar */}
       <aside
         className={`${mono.className} fixed top-0 left-0 h-screen w-[240px] bg-[#111111] border-r border-[#2a2a2a] flex flex-col z-10`}
       >
-        {/* Wordmark */}
-        <div className="px-6 py-6 border-b border-[#2a2a2a]">
-          <span className="text-[#999999] text-xs tracking-widest">ACCESSION</span>
-          <span className="text-[#C9A84C] text-xs tracking-widest"> PARTNERS</span>
+        {/* Logo */}
+        <div className="px-6 py-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/White V2.png" alt="Accession Partners" style={{ maxWidth: 140 }} />
         </div>
+        <div style={{ height: 1, background: '#1e1e1e' }} />
 
         {/* Nav */}
         <nav className="flex-1 pt-2">
@@ -69,7 +69,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Content offset for fixed sidebar */}
       <main className="ml-[240px] flex-1 bg-[#0D0D0D] min-w-0 min-h-screen">
         {children}
       </main>

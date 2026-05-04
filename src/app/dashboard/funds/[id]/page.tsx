@@ -39,14 +39,14 @@ interface Run {
   report_text: string | null
   input_tokens: number | null
   output_tokens: number | null
-  created_at: string
+  created_at: string | null
 }
 
 const DOC_TYPES = ['Fact Sheet', 'PPM', 'Tear Sheet', 'Annual Report', 'Other']
 const STRATEGIES = ['Private Credit']
 
 const STATUS_COLOR: Record<string, string> = {
-  pending: 'text-[#555555]',
+  pending: 'text-[#C9A84C]',
   running: 'text-[#C9A84C]',
   complete: 'text-emerald-500',
   error: 'text-red-500',
@@ -407,7 +407,7 @@ export default function FundDetailPage() {
                       >
                         <div className="flex items-center gap-6">
                           <span className="text-[#E8E0D0] text-xs">
-                            {format(new Date(run.created_at), 'MMM d, yyyy · HH:mm')}
+                            {run.created_at ? format(new Date(run.created_at), 'MMM d, yyyy · HH:mm') : '—'}
                           </span>
                           <span className={`text-xs tracking-widest ${STATUS_COLOR[run.status] ?? 'text-[#555555]'}`}>
                             {run.status.toUpperCase()}
