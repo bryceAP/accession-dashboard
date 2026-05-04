@@ -263,7 +263,14 @@ function FundTable({
       <tbody>
         {funds.map((fund) => (
           <tr key={fund.id} className="border-b border-[#1a1a1a] group hover:bg-[#131313] transition-colors">
-            <td className="text-[#E8E0D0] text-xs py-4 pr-8 whitespace-nowrap">{fund.name}</td>
+            <td className="text-xs py-4 pr-8 whitespace-nowrap">
+              <Link
+                href={`/dashboard/funds/${fund.id}`}
+                className="text-[#E8E0D0] hover:text-[#C9A84C] transition-colors cursor-pointer"
+              >
+                {fund.name}
+              </Link>
+            </td>
             <td className="text-[#777777] text-xs py-4 pr-8">{fund.manager ?? '—'}</td>
             <td className="text-[#777777] text-xs py-4 pr-8">{fund.strategy ?? '—'}</td>
             <td className="text-[#777777] text-xs py-4 pr-8 whitespace-nowrap">

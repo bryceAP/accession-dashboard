@@ -27,9 +27,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className={`${mono.className} fixed top-0 left-0 h-screen w-[240px] bg-[#111111] border-r border-[#2a2a2a] flex flex-col z-10`}
       >
         {/* Logo */}
-        <div className="px-6 py-6">
+        <div className="px-6 py-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/White V2.png" alt="Accession Partners" style={{ maxWidth: 140 }} />
+          <img src="/White V2.png" alt="Accession Partners" style={{ maxWidth: 100 }} />
         </div>
         <div style={{ height: 1, background: '#1e1e1e' }} />
 

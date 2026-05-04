@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { JetBrains_Mono } from 'next/font/google'
 
-const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'] })
+const mono = JetBrains_Mono({ subsets: ['latin'] })
 
 export default function LoginPage() {
   const [password, setPassword] = useState('')
@@ -33,51 +33,83 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`${jetbrainsMono.className} min-h-screen flex flex-col items-center justify-center`}
-      style={{ background: '#0A0A0A' }}
+      className={mono.className}
+      style={{
+        minHeight: '100vh',
+        background: '#0A0A0A',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
-      <div className="flex flex-col items-center w-full max-w-[360px] px-6">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 320 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/Accession Partners Logo.jpg"
           alt="Accession Partners"
-          style={{ maxWidth: 220, marginBottom: 24 }}
+          style={{ maxWidth: 180, marginBottom: 32 }}
         />
-        <p style={{ color: '#666666', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 8 }}>
+
+        <p style={{ color: '#555555', fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>
           Fund Research Platform
         </p>
-        <p style={{ color: '#444444', fontSize: 10, letterSpacing: '0.1em', marginBottom: 40 }}>
+        <p style={{ color: '#333333', fontSize: 11, letterSpacing: '0.1em', marginBottom: 48 }}>
           Authorized Access Only
         </p>
 
-        <form onSubmit={handleSubmit} className="w-full">
+        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full bg-[#111111] border border-[#2a2a2a] text-white p-3 rounded-none outline-none placeholder-[#444444] focus:border-[#3a3a3a] mb-3"
             autoFocus
+            style={{
+              width: '100%',
+              background: '#111111',
+              border: '1px solid #2a2a2a',
+              color: '#ffffff',
+              padding: '12px',
+              fontSize: 12,
+              outline: 'none',
+              borderRadius: 0,
+              boxSizing: 'border-box',
+              marginBottom: 8,
+            }}
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#C9A84C] text-black font-medium p-3 rounded-none hover:bg-[#b8973a] transition-colors disabled:opacity-60"
+            style={{
+              width: '100%',
+              background: '#C9A84C',
+              color: '#000000',
+              fontWeight: 500,
+              padding: '12px',
+              fontSize: 12,
+              letterSpacing: '0.1em',
+              border: 'none',
+              borderRadius: 0,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+            }}
           >
-            {loading ? '...' : 'Enter'}
+            ENTER
           </button>
-          {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+          {error && (
+            <p style={{ color: '#ef4444', fontSize: 11, marginTop: 8 }}>{error}</p>
+          )}
         </form>
       </div>
 
       <p
         style={{
-          color: '#333333',
-          fontSize: 9,
-          letterSpacing: '0.08em',
           position: 'fixed',
           bottom: 24,
-          textAlign: 'center',
+          color: '#2a2a2a',
+          fontSize: 10,
+          letterSpacing: '0.08em',
         }}
       >
         Accession Partners LLC · Registered Investment Adviser · Colorado
