@@ -8,7 +8,6 @@ import { format } from 'date-fns'
 import type { FundReport, ReportSections } from '@/types'
 import { DISCLAIMER } from '@/lib/anthropic/prompts'
 import type { KeyChanges } from '@/lib/compareRuns'
-import { usePDFExport } from '@/hooks/usePDFExport'
 import { ChangeSummary } from '@/components/dashboard/ChangeSummary'
 import { PerformanceTable } from '@/components/charts/PerformanceTable'
 import { ReturnHistogram } from '@/components/charts/ReturnHistogram'
@@ -178,8 +177,6 @@ export default function RunDetailPage() {
   const [fetchError, setFetchError] = useState('')
   const [rerunning,  setRerunning]  = useState(false)
 
-  const { exportPDF, isExporting } = usePDFExport(runId)
-
   const load = useCallback(async () => {
     setLoading(true)
     setFetchError('')
@@ -345,8 +342,7 @@ export default function RunDetailPage() {
             </div>
             <div className="flex gap-3 flex-shrink-0 mt-1">
               <button
-                onClick={exportPDF}
-                disabled={isExporting}
+                onClick={() => window.open(`/dashboard/funds/${fundId}/run/${runId}/print`, '_blank')}
                 className={mono.className}
                 style={{
                   background: '#C9A84C',
@@ -355,11 +351,10 @@ export default function RunDetailPage() {
                   letterSpacing: '0.1em',
                   padding: '9px 22px',
                   border: 'none',
-                  cursor: isExporting ? 'not-allowed' : 'pointer',
-                  opacity: isExporting ? 0.6 : 1,
+                  cursor: 'pointer',
                 }}
               >
-                {isExporting ? 'EXPORTING...' : 'EXPORT PDF'}
+                EXPORT PDF
               </button>
               <button
                 onClick={handleRerun}
