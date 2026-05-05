@@ -6,7 +6,7 @@ import type { FundReport } from '@/types'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-parse/lib/pdf-parse')
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 export async function GET(request: Request) {
   const fundId = new URL(request.url).searchParams.get('fund_id')
