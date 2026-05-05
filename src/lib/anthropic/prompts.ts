@@ -66,6 +66,91 @@ Return null for any field where:
 
 Return ONLY valid JSON. No markdown, no preamble, no explanation outside the JSON. The response must begin with { and end with }.
 
+Your response must match this exact structure and field names:
+
+{
+  "fund_snapshot": {
+    "fund_name": "string",
+    "manager": "string",
+    "strategy_label": "string",
+    "structure": "string",
+    "inception_date": "YYYY-MM-DD or null",
+    "fund_size_m": number_or_null,
+    "nav_per_share": number_or_null,
+    "distribution_rate_annualized_pct": number_or_null,
+    "management_fee_pct": number_or_null,
+    "performance_fee_pct": number_or_null,
+    "hurdle_rate_pct": number_or_null,
+    "minimum_investment": number_or_null,
+    "liquidity_terms": "string or null",
+    "leverage_target": "string or null"
+  },
+  "credit_metrics": {
+    "weighted_avg_yield_pct": number_or_null,
+    "pik_pct": number_or_null,
+    "bsl_clo_exposure_pct": number_or_null,
+    "senior_secured_pct": number_or_null,
+    "floating_rate_pct": number_or_null,
+    "avg_ebitda_m": number_or_null,
+    "interest_coverage_ratio": number_or_null,
+    "fixed_charge_ratio": number_or_null,
+    "ltv_pct": number_or_null,
+    "deployed_pct": number_or_null,
+    "non_accrual_pct": number_or_null,
+    "number_of_portfolio_companies": number_or_null,
+    "avg_loan_size_m": number_or_null,
+    "net_leverage_turns": number_or_null
+  },
+  "performance": {
+    "ytd_pct": number_or_null,
+    "one_year_pct": number_or_null,
+    "three_year_pct": number_or_null,
+    "five_year_pct": number_or_null,
+    "since_inception_pct": number_or_null,
+    "benchmark_ytd_pct": number_or_null,
+    "benchmark_one_year_pct": number_or_null,
+    "benchmark_three_year_pct": number_or_null,
+    "benchmark_since_inception_pct": number_or_null,
+    "benchmark_name": "string or null",
+    "as_of_date": "YYYY-MM-DD or null",
+    "nav_history": [{ "date": "YYYY-MM-DD", "nav": number }],
+    "fund_size_history": [{ "date": "YYYY-MM-DD", "aum_m": number }],
+    "distribution_history": [{ "date": "YYYY-MM-DD", "amount": number, "type": "string" }]
+  },
+  "portfolio_composition": {
+    "sector_breakdown": [{ "name": "string", "pct": number }],
+    "rating_breakdown": [{ "rating": "string", "pct": number }],
+    "loan_type_breakdown": [{ "type": "string", "pct": number }],
+    "geographic_breakdown": [{ "region": "string", "pct": number }]
+  },
+  "merits": ["string", "string"],
+  "risks": ["string", "string"],
+  "suitability": {
+    "suitable_for": ["string"],
+    "not_suitable_for": ["string"]
+  },
+  "report_sections": {
+    "fund_overview": "string (200-500 words)",
+    "investment_strategy": "string (200-500 words)",
+    "portfolio_analysis": "string (200-500 words)",
+    "performance_analysis": "string (200-500 words)",
+    "risk_analysis": "string (200-500 words)",
+    "fee_analysis": "string (200-500 words)",
+    "conclusion": "string (200-500 words)"
+  },
+  "sources": [{ "id": "string", "name": "string", "url": null, "reliability": "high|medium|low" }],
+  "data_quality": {
+    "completeness_pct": number,
+    "null_fields": ["string"]
+  }
+}
+
+Key rules for arrays:
+- nav_history, fund_size_history, distribution_history: return [] if no data found
+- sector_breakdown, rating_breakdown, loan_type_breakdown, geographic_breakdown: return [] if no data found
+- merits: 3-6 concise bullet strings summarizing the fund's key investment merits
+- risks: 3-6 concise bullet strings summarizing the fund's key investment risks (distinct from the prose in report_sections.risk_analysis)
+
 === WRITTEN ANALYSIS QUALITY STANDARDS ===
 
 The report_sections must be written at institutional consultant quality — similar to a Consilium, Mercer, or Cambridge Associates fund review. Each section must:

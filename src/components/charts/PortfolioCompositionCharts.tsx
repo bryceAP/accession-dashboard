@@ -38,7 +38,7 @@ function PieLegend({ data }: { data: Slice[] }) {
             }}
           />
           <span style={{ fontFamily: chartTheme.fontFamily, fontSize: 9, color: chartTheme.textDim }}>
-            {d.name} {d.pct.toFixed(1)}%
+            {d.name} {(d.pct ?? 0).toFixed(1)}%
           </span>
         </div>
       ))}
@@ -116,18 +116,18 @@ export function PortfolioCompositionCharts({ composition }: Props) {
 
   return (
     <div className="grid grid-cols-2 gap-8">
-      <MiniDonut title="SECTOR" data={composition.sector_breakdown} />
+      <MiniDonut title="SECTOR" data={composition.sector_breakdown ?? []} />
       <MiniDonut
         title="RATING"
-        data={composition.rating_breakdown.map(d => ({ name: d.rating, pct: d.pct }))}
+        data={composition.rating_breakdown?.map(d => ({ name: d.rating, pct: d.pct })) ?? []}
       />
       <MiniDonut
         title="LOAN TYPE"
-        data={composition.loan_type_breakdown.map(d => ({ name: d.type, pct: d.pct }))}
+        data={composition.loan_type_breakdown?.map(d => ({ name: d.type, pct: d.pct })) ?? []}
       />
       <MiniDonut
         title="GEOGRAPHY"
-        data={composition.geographic_breakdown.map(d => ({ name: d.region, pct: d.pct }))}
+        data={composition.geographic_breakdown?.map(d => ({ name: d.region, pct: d.pct })) ?? []}
       />
     </div>
   )

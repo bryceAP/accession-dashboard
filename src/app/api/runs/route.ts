@@ -74,7 +74,9 @@ export async function POST(request: Request) {
             documents.push({ type: 'pdf', base64: buffer.toString('base64'), filename })
           } else {
             const parsed = await pdfParse(buffer)
-            documents.push({ type: 'text', text: parsed.text, filename })
+            const extractedText = parsed.text
+            console.log(`[runs] Extracted text from ${doc.file_name} (first 2000 chars):`, extractedText.substring(0, 2000))
+            documents.push({ type: 'text', text: extractedText, filename })
           }
         }
       }
