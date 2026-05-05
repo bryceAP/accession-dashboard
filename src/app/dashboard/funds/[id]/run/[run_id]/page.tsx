@@ -316,7 +316,7 @@ export default function RunDetailPage() {
       <div className="flex flex-col gap-px px-8 py-8">
 
         {/* Change detection banner */}
-        {run.key_changes && run.key_changes.changes.length + run.key_changes.new_risks.length + run.key_changes.resolved_risks.length + run.key_changes.new_merits.length + run.key_changes.resolved_merits.length > 0 && (
+        {run.key_changes && (
           <ChangeSummary changes={run.key_changes} />
         )}
 

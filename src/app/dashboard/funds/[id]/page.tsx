@@ -242,10 +242,11 @@ export default function FundDetailPage() {
     setRunning(true)
     setRunError('')
 
+    const priorRunId = runs.length > 0 ? runs[0].id : undefined
     const res = await fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fund_id: id, document_ids: selectedDocIds, context: runContext }),
+      body: JSON.stringify({ fund_id: id, document_ids: selectedDocIds, context: runContext, prior_run_id: priorRunId }),
     })
     const data = await res.json()
 

@@ -48,7 +48,7 @@ interface Props {
 }
 
 export function ChangeSummary({ changes }: Props) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   const totalChanges =
     changes.changes.length +
@@ -167,37 +167,13 @@ export function ChangeSummary({ changes }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {changes.new_risks.map((r, i) => (
                   <div key={`nr-${i}`} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: '#C9A84C',
-                        border: '1px solid #3d2e00',
-                        padding: '1px 6px',
-                        flexShrink: 0,
-                        letterSpacing: '0.06em',
-                        marginTop: 2,
-                      }}
-                    >
-                      NEW
-                    </span>
+                    <span style={{ fontSize: 13, color: '#C9A84C', flexShrink: 0, lineHeight: 1.6 }}>⚠</span>
                     <p style={{ fontSize: 11, color: '#C9A84C', lineHeight: 1.6, margin: 0 }}>{r}</p>
                   </div>
                 ))}
                 {changes.resolved_risks.map((r, i) => (
                   <div key={`rr-${i}`} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: '#4ade80',
-                        border: '1px solid #1a4a1a',
-                        padding: '1px 6px',
-                        flexShrink: 0,
-                        letterSpacing: '0.06em',
-                        marginTop: 2,
-                      }}
-                    >
-                      RES
-                    </span>
+                    <span style={{ fontSize: 13, color: '#4ade80', flexShrink: 0, lineHeight: 1.6 }}>✓</span>
                     <p style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.6, margin: 0 }}>{r}</p>
                   </div>
                 ))}
@@ -214,19 +190,7 @@ export function ChangeSummary({ changes }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {changes.new_merits.map((m, i) => (
                   <div key={`nm-${i}`} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: '#4ade80',
-                        border: '1px solid #1a4a1a',
-                        padding: '1px 6px',
-                        flexShrink: 0,
-                        letterSpacing: '0.06em',
-                        marginTop: 2,
-                      }}
-                    >
-                      NEW
-                    </span>
+                    <span style={{ fontSize: 13, color: '#4ade80', flexShrink: 0, lineHeight: 1.6 }}>✓</span>
                     <p style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.6, margin: 0 }}>{m}</p>
                   </div>
                 ))}

@@ -284,9 +284,6 @@ function FundTable({
                 <Link href={`/dashboard/funds/${fund.id}`} className="text-[#555555] hover:text-[#E8E0D0] tracking-widest transition-colors">
                   VIEW
                 </Link>
-                <button className="text-[#555555] hover:text-[#C9A84C] tracking-widest transition-colors">
-                  RE-RUN
-                </button>
                 <button
                   onClick={() => onDelete(fund.id)}
                   className="text-[#555555] hover:text-red-500 tracking-widest transition-colors"
