@@ -63,6 +63,18 @@ Return null for any field where:
 - The data appears to be outdated by more than 18 months relative to other documents provided
 - You are uncertain whether the value applies to this specific fund/share class vs. a related fund
 
+=== REQUIRED CALCULATIONS ===
+
+Perform these calculations if the inputs are available in the documents:
+
+- number_of_portfolio_companies: Look for "underlying credits", "portfolio companies", or numbers like "4,100+" — extract the number
+- avg_loan_size_m: Calculate as total_portfolio_fair_value / number_of_portfolio_companies. If total portfolio value and credit count are both stated, calculate this.
+- pik_pct: Calculate as (PIK interest income / total investment income) × 100. Both figures are in the Statement of Operations.
+- deployed_pct: Calculate as (total investments at fair value / total assets) × 100. Both figures are in the Statement of Assets and Liabilities.
+- floating_rate_pct: Look for percentage of floating rate loans in Interest Rate Risk section or shareholder letter
+- interest_coverage_ratio: Look for "interest coverage" or "ICR" or "EBITDA/interest" — often in portfolio statistics or valuation tables
+- weighted_avg_yield_pct: Look for "average yield-to-maturity" or "weighted average yield" on the fact sheet
+
 === JSON OUTPUT REQUIREMENTS ===
 
 Return ONLY valid JSON. No markdown, no preamble, no explanation outside the JSON. The response must begin with { and end with }.
