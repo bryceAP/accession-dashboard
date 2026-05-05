@@ -53,7 +53,7 @@ export async function generateFundReport({
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 16000,
+    max_tokens: 32000,
     system: [
       {
         type: "text",
@@ -69,11 +69,25 @@ export async function generateFundReport({
     .map((block) => block.text)
     .join('')
 
-  const cleaned = text
+  // Strip markdown fences
+  let cleaned = text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim()
+
+  // Extract just the JSON object in case there is any text before or after
+  const firstBrace = cleaned.indexOf('{')
+  const lastBrace = cleaned.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1)
+  }
+
+  // Detect truncation before attempting parse
+  if (!cleaned.endsWith('}')) {
+    console.error('Raw Claude response (truncated):', text)
+    throw new Error('Response truncated — increase max_tokens')
+  }
 
   try {
     return JSON.parse(cleaned) as FundReport;
