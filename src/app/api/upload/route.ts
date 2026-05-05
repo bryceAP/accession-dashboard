@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// Pages Router syntax — no-op in App Router, but kept per convention.
-// The effective limit is set in next.config.mjs via api.bodyParser.sizeLimit.
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-}
-
 const CONTENT_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

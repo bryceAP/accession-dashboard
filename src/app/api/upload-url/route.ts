@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
-    const { fund_id, file_name, file_size, document_type } = await request.json()
+    const { fund_id, file_name } = await request.json()
 
     if (!fund_id || !file_name) {
       return NextResponse.json({ error: 'fund_id and file_name are required' }, { status: 400 })

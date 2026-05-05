@@ -131,25 +131,6 @@ function SectionBox({
   )
 }
 
-function SnapshotCard({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div style={{ padding: '18px 20px', background: '#0D0D0D' }}>
-      <p
-        className={mono.className}
-        style={{ fontSize: 9, color: '#666666', letterSpacing: '0.12em', marginBottom: 8 }}
-      >
-        {label}
-      </p>
-      <p
-        className={garamond.className}
-        style={{ fontSize: 22, color: value ? '#E8E0D0' : '#333333', fontWeight: 300, lineHeight: 1.2 }}
-      >
-        {value ?? '—'}
-      </p>
-    </div>
-  )
-}
-
 /* ─── Written-analysis section map ───────────────────────────── */
 
 const WRITTEN_SECTIONS: { num: number; title: string; key: keyof ReportSections }[] = [
