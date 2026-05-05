@@ -12,25 +12,6 @@ interface GenerateParams {
   documents: Array<PdfDocument | TextDocument>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeFields(data: any): any {
-  if (data.fund_snapshot) {
-    const fs = data.fund_snapshot
-    if (fs.aum_m !== undefined && !fs.fund_size_m) fs.fund_size_m = fs.aum_m
-    if (fs.net_assets_m !== undefined && !fs.fund_size_m) fs.fund_size_m = fs.net_assets_m
-    if (fs.distribution_rate_pct !== undefined && !fs.distribution_rate_annualized_pct) fs.distribution_rate_annualized_pct = fs.distribution_rate_pct
-    if (fs.avg_ytm_pct !== undefined && !fs.weighted_avg_yield_pct) {
-      if (!data.credit_metrics) data.credit_metrics = {}
-      data.credit_metrics.weighted_avg_yield_pct = fs.avg_ytm_pct
-    }
-    if (fs.first_lien_pct !== undefined && !fs.senior_secured_pct) {
-      if (!data.credit_metrics) data.credit_metrics = {}
-      data.credit_metrics.senior_secured_pct = fs.first_lien_pct
-    }
-  }
-  return data
-}
-
 export async function generateFundReport({
   fund_name,
   manager,
@@ -72,40 +53,30 @@ export async function generateFundReport({
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 32000,
+    max_tokens: 16000,
     system: PRIVATE_CREDIT_SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
   });
 
   const text = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('')
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
 
-  // Strip markdown fences
-  let cleaned = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim()
+  const cleaned = text
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
 
-  // Extract just the JSON object in case there is any text before or after
-  const firstBrace = cleaned.indexOf('{')
-  const lastBrace = cleaned.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1)
-  }
-
-  // Detect truncation before attempting parse
-  if (!cleaned.endsWith('}')) {
-    console.error('Raw Claude response (truncated):', text)
-    throw new Error('Response truncated — increase max_tokens')
-  }
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  const jsonStr = cleaned.slice(start, end + 1);
 
   try {
-    return normalizeFields(JSON.parse(cleaned)) as FundReport;
-  } catch {
-    console.error('Raw Claude response:', text)
-    throw new Error('Claude returned invalid JSON — check server logs for the raw response.')
+    return JSON.parse(jsonStr) as FundReport;
+  } catch (e) {
+    console.error("Raw Claude response:", text);
+    throw e;
   }
 }
