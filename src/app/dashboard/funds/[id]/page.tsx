@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
@@ -64,6 +64,7 @@ const STATUS_BORDER: Record<string, string> = {
 export default function FundDetailPage() {
   const params = useParams()
   const id = params.id as string
+  const router = useRouter()
 
   // Data
   const [fund, setFund] = useState<Fund | null>(null)
@@ -85,8 +86,15 @@ export default function FundDetailPage() {
   const [runOpen, setRunOpen] = useState(false)
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
   const [runContext, setRunContext] = useState('')
-  const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState('')
+
+  // Progress modal
+  const [progressOpen, setProgressOpen] = useState(false)
+  const [progressPct, setProgressPct] = useState(0)
+  const [progressStage, setProgressStage] = useState('')
+  const [progressError, setProgressError] = useState('')
+  const [progressDuration, setProgressDuration] = useState(0)
+  const progressTimers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Edit fund modal
   const [editOpen, setEditOpen] = useState(false)
@@ -239,8 +247,35 @@ export default function FundDetailPage() {
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault()
-    setRunning(true)
     setRunError('')
+    setProgressError('')
+
+    // Close config modal, open progress overlay
+    setRunOpen(false)
+    setProgressPct(0)
+    setProgressDuration(0)
+    setProgressStage('Reading documents...')
+    setProgressOpen(true)
+
+    // Clear any stale timers
+    progressTimers.current.forEach(clearTimeout)
+    progressTimers.current = []
+
+    const schedule = (fn: () => void, delay: number) => {
+      const id = setTimeout(fn, delay)
+      progressTimers.current.push(id)
+    }
+
+    // Stage 1: 0→15% over 3s
+    schedule(() => { setProgressPct(15); setProgressDuration(3) }, 50)
+    // Stage 2: 15→35% over 5s
+    schedule(() => { setProgressStage('Extracting fund data...'); setProgressPct(35); setProgressDuration(5) }, 3050)
+    // Stage 3: 35→60% over 8s
+    schedule(() => { setProgressStage('Analyzing portfolio metrics...'); setProgressPct(60); setProgressDuration(8) }, 8050)
+    // Stage 4: 60→80% over 10s
+    schedule(() => { setProgressStage('Writing research report...'); setProgressPct(80); setProgressDuration(10) }, 16050)
+    // Stage 5: 80→95% slow crawl until API responds
+    schedule(() => { setProgressStage('Finalizing analysis...'); setProgressPct(95); setProgressDuration(90) }, 26050)
 
     const priorRunId = runs.length > 0 ? runs[0].id : undefined
     const res = await fetch('/api/runs', {
@@ -250,17 +285,28 @@ export default function FundDetailPage() {
     })
     const data = await res.json()
 
+    // Cancel pending stage timers
+    progressTimers.current.forEach(clearTimeout)
+    progressTimers.current = []
+
     if (!res.ok) {
-      setRunError(data.error ?? 'Analysis failed')
-      setRunning(false)
+      setProgressError(data.error ?? 'Analysis failed')
       return
     }
+
+    // Stage 6: Complete
+    setProgressStage('Complete!')
+    setProgressPct(100)
+    setProgressDuration(0.4)
 
     setRuns((prev) => [data, ...prev])
     setExpandedRunId(data.id)
     setFund((prev) => prev ? { ...prev, status: data.status, last_run_at: data.created_at } : prev)
-    setRunning(false)
-    setRunOpen(false)
+
+    const redirectId = setTimeout(() => {
+      router.push(`/dashboard/funds/${id}/run/${data.id}`)
+    }, 900)
+    progressTimers.current.push(redirectId)
   }
 
   /* ─── Render ────────────────────────────────────────────────── */
@@ -325,7 +371,8 @@ export default function FundDetailPage() {
             </button>
             <button
               onClick={openRun}
-              className="bg-[#C9A84C] text-black text-xs tracking-widest px-5 py-2 hover:bg-[#b8973a] transition-colors"
+              disabled={progressOpen}
+              className="bg-[#C9A84C] text-black text-xs tracking-widest px-5 py-2 hover:bg-[#b8973a] transition-colors disabled:opacity-50"
             >
               RUN ANALYSIS
             </button>
@@ -521,7 +568,7 @@ export default function FundDetailPage() {
 
       {/* Run analysis modal */}
       {runOpen && (
-        <Overlay onClose={() => !running && setRunOpen(false)}>
+        <Overlay onClose={() => setRunOpen(false)}>
           <div className="border-b border-[#2a2a2a] px-8 py-5">
             <p className="text-[#E8E0D0] text-xs tracking-widest">RUN ANALYSIS</p>
             <p className="text-[#444444] text-xs mt-1">{fund.name}</p>
@@ -557,31 +604,58 @@ export default function FundDetailPage() {
               />
             </Field>
             {runError && <p className="text-red-500 text-xs">{runError}</p>}
-            {running && (
-              <div className="py-4 text-center">
-                <p className="text-[#C9A84C] text-xs tracking-widest">GENERATING REPORT...</p>
-                <p className="text-[#444444] text-xs mt-1">This may take up to a minute.</p>
-              </div>
-            )}
-            {!running && (
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="submit"
-                  className="bg-[#C9A84C] text-black text-xs tracking-widest px-6 py-2.5 hover:bg-[#b8973a] transition-colors"
-                >
-                  GENERATE REPORT
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRunOpen(false)}
-                  className="text-[#555555] hover:text-[#999999] text-xs tracking-widest px-4 py-2.5 transition-colors"
-                >
-                  CANCEL
-                </button>
-              </div>
-            )}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="submit"
+                className="bg-[#C9A84C] text-black text-xs tracking-widest px-6 py-2.5 hover:bg-[#b8973a] transition-colors"
+              >
+                GENERATE REPORT
+              </button>
+              <button
+                type="button"
+                onClick={() => setRunOpen(false)}
+                className="text-[#555555] hover:text-[#999999] text-xs tracking-widest px-4 py-2.5 transition-colors"
+              >
+                CANCEL
+              </button>
+            </div>
           </form>
         </Overlay>
+      )}
+
+      {/* Progress modal */}
+      {progressOpen && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
+          <div className={`${mono.className} bg-[#111111] border border-[#2a2a2a] w-full max-w-[480px] px-8 py-8`}>
+            {progressError ? (
+              <>
+                <p className="text-red-500 text-xs tracking-widest mb-3">ANALYSIS FAILED</p>
+                <p className="text-[#666666] text-xs mb-6 leading-relaxed">{progressError}</p>
+                <button
+                  onClick={() => { setProgressOpen(false); setProgressError('') }}
+                  className="text-[#555555] hover:text-[#999999] text-xs tracking-widest transition-colors"
+                >
+                  CLOSE
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[#E8E0D0] text-xs tracking-widest mb-1">RUNNING ANALYSIS</p>
+                <p className="text-[#444444] text-xs mb-8">{fund?.name}</p>
+                <div className="bg-[#1a1a1a] h-1">
+                  <div
+                    className="h-full bg-[#C9A84C]"
+                    style={{
+                      width: `${progressPct}%`,
+                      transition: `width ${progressDuration}s linear`,
+                    }}
+                  />
+                </div>
+                <p className="text-[#555555] text-xs mt-3">{progressStage}</p>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Edit fund modal */}
