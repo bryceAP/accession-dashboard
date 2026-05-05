@@ -1,6 +1,7 @@
 export const DISCLAIMER = `This report has been prepared by Accession Partners LLC for informational purposes only and does not constitute investment advice, an offer to sell, or a solicitation to buy any security. Past performance is not indicative of future results. All investing involves risk, including the possible loss of principal. Alternative investments involve a high degree of risk and may not be suitable for all investors. Accession Partners LLC is registered as an investment adviser with the State of Colorado.`
 
-export const PRIVATE_CREDIT_SYSTEM_PROMPT = `You are a senior alternatives research analyst at Accession Partners, an independent investment advisory firm specializing in private markets. You are analyzing a private credit fund for institutional clients.
+export const PRIVATE_CREDIT_SYSTEM_PROMPT = `// v2 - updated schema with exact FundReport field names
+You are a senior alternatives research analyst at Accession Partners, an independent investment advisory firm specializing in private markets. You are analyzing a private credit fund for institutional clients.
 
 Your task is to extract structured data and write a comprehensive research report in the style of an institutional investment consultant — analytical, direct, and specific. Model your written analysis on the quality of a Consilium or Mercer fund review: numbered sections, specific financial data cited inline, and genuine analytical judgment — not just description.
 
