@@ -8,26 +8,37 @@ const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-par
 
 export const maxDuration = 300
 
-const HARD_CAP = 40_000
+const HARD_CAP = 80_000
 
 function trimToRelevantSections(text: string, fileName: string): string {
   const lower = text.toLowerCase()
+  const foundSections: string[] = []
   const parts: string[] = []
 
-  const addFirst = (markers: string[], windowLen: number) => {
+  // Returns the index of the first matching marker, or -1
+  const findFirst = (markers: string[]): { idx: number; marker: string } => {
+    let best = { idx: -1, marker: '' }
     for (const marker of markers) {
       const idx = lower.indexOf(marker.toLowerCase())
-      if (idx !== -1) {
-        parts.push(`\n\n--- SECTION: ${markers[0].toUpperCase()} ---\n` + text.substring(idx, idx + windowLen))
-        return
+      if (idx !== -1 && (best.idx === -1 || idx < best.idx)) {
+        best = { idx, marker }
       }
+    }
+    return best
+  }
+
+  const addFirst = (label: string, markers: string[], windowLen: number) => {
+    const { idx, marker } = findFirst(markers)
+    if (idx !== -1) {
+      foundSections.push(label)
+      parts.push(`\n\n=== ${label} (matched: "${marker}") ===\n` + text.substring(idx, idx + windowLen))
     }
   }
 
-  const addAllOccurrences = (markers: string[], windowLen: number, maxOccurrences: number) => {
+  const addAllOccurrences = (label: string, markers: string[], windowLen: number, maxOccurrences: number) => {
     let found = 0
     let start = 0
-    outer: while (found < maxOccurrences) {
+    while (found < maxOccurrences) {
       let earliest = -1
       let earliestMarker = ''
       for (const marker of markers) {
@@ -37,38 +48,63 @@ function trimToRelevantSections(text: string, fileName: string): string {
           earliestMarker = marker
         }
       }
-      if (earliest === -1) break outer
+      if (earliest === -1) break
+      if (found === 0) foundSections.push(label)
       const half = Math.floor(windowLen / 2)
       const from = Math.max(0, earliest - half)
       const to = Math.min(text.length, earliest + half)
-      parts.push(`\n\n--- OCCURRENCE: ${earliestMarker.toUpperCase()} ---\n` + text.substring(from, to))
+      parts.push(`\n\n=== ${label} [${found + 1}] (matched: "${earliestMarker}") ===\n` + text.substring(from, to))
       start = earliest + 1
       found++
     }
   }
 
-  // Named sections — first occurrence only
-  addFirst(['Financial Highlights'], 6000)
-  addFirst(['Statement of Assets and Liabilities'], 5000)
-  addFirst(['Statement of Operations'], 4000)
-  addFirst(['Interest Rate Risk'], 3000)
-  addFirst(['floating rate', 'variable rate'], 2000)
-  addFirst(['portfolio composition', 'portfolio statistics'], 4000)
-  addFirst(['credit rating', 'rating breakdown'], 2000)
-  addFirst(['geographic', 'country'], 2000)
-  addFirst(['net leverage', 'debt/EBITDA'], 1000)
-  addFirst(['Letter to Shareholders'], 3000)
+  // 1. Letter to Shareholders
+  addFirst('LETTER TO SHAREHOLDERS', ['Letter to Shareholders'], 4000)
 
-  // Keyword occurrences — capped
-  addAllOccurrences(['non-accrual'], 1500, 4)
-  addAllOccurrences(['payment-in-kind', 'PIK income'], 1000, 5)
+  // 2. Financial Highlights
+  addFirst('FINANCIAL HIGHLIGHTS', ['Financial Highlights'], 8000)
 
-  // Tail
-  parts.push('\n\n--- TAIL: LAST 3000 CHARS ---\n' + text.substring(text.length - 3000))
+  // 3. Statement of Assets and Liabilities
+  addFirst('STATEMENT OF ASSETS AND LIABILITIES', ['Statement of Assets and Liabilities', 'Consolidated Statement of Assets'], 5000)
+
+  // 4. Statement of Operations
+  addFirst('STATEMENT OF OPERATIONS', ['Statement of Operations', 'Consolidated Statement of Operations'], 4000)
+
+  // 5. Interest Rate Risk
+  addFirst('INTEREST RATE RISK', ['Interest Rate Risk', 'interest rate risk'], 3000)
+
+  // 6. Non-accrual occurrences
+  addAllOccurrences('NON-ACCRUAL', ['non-accrual', 'non-earning'], 2000, 4)
+
+  // 7. PIK income occurrences
+  addAllOccurrences('PIK INCOME', ['payment-in-kind', 'PIK interest', 'PIK income'], 1500, 5)
+
+  // 8. Portfolio statistics / quality
+  addFirst('PORTFOLIO STATISTICS', ['Portfolio Statistics', 'Portfolio Characteristics', 'Portfolio Quality'], 4000)
+
+  // 9. Credit quality / rating
+  addFirst('CREDIT QUALITY', ['Credit Quality', 'Credit Rating', 'Rating Distribution'], 3000)
+
+  // 10. Geographic breakdown
+  addFirst('GEOGRAPHIC BREAKDOWN', ['Geographic', 'Country', 'Region'], 2000)
+
+  // 11. Leverage and borrowings
+  addFirst('LEVERAGE AND BORROWINGS', ['Leverage', 'Borrowings', 'Senior Notes', 'Credit Facility'], 3000)
+
+  // 12. Distributions table
+  addFirst('DISTRIBUTIONS', ['Distributions', 'distributions declared', 'distributions per share'], 3000)
+
+  // 13. NAV per share history
+  addFirst('NAV PER SHARE HISTORY', ['net asset value per share', 'NAV per share'], 2000)
+
+  // 14. Tail
+  foundSections.push('DOCUMENT TAIL')
+  parts.push('\n\n=== DOCUMENT TAIL (last 5000 chars) ===\n' + text.substring(text.length - 5000))
 
   const combined = parts.join('')
   const trimmed = combined.length > HARD_CAP ? combined.substring(0, HARD_CAP) : combined
-  console.log(`[runs] Trimmed ${fileName}: ${text.length} → ${trimmed.length} characters`)
+  console.log(`[runs] ${fileName}: ${text.length} chars → ${trimmed.length} chars. Sections found: ${foundSections.join(', ')}`)
   return trimmed
 }
 
