@@ -75,6 +75,7 @@ export async function POST(request: Request) {
           } else {
             const parsed = await pdfParse(buffer)
             const extractedText = parsed.text
+            console.log(`[runs] Total extracted text length for ${doc.file_name}: ${extractedText.length} characters`)
             console.log(`[runs] Extracted text from ${doc.file_name} (first 2000 chars):`, extractedText.substring(0, 2000))
             documents.push({ type: 'text', text: extractedText, filename })
           }
