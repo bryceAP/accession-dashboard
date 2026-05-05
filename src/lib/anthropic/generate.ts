@@ -54,7 +54,13 @@ export async function generateFundReport({
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 16000,
-    system: PRIVATE_CREDIT_SYSTEM_PROMPT,
+    system: [
+      {
+        type: "text",
+        text: PRIVATE_CREDIT_SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content }],
   });
 
