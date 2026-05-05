@@ -36,13 +36,13 @@ function PieLegend({ data }: { data: Slice[] }) {
   )
 }
 
-function MiniDonut({ title, data }: { title: string; data: Slice[] }) {
+function MiniDonut({ title, data, height }: { title: string; data: Slice[]; height?: number }) {
   return (
     <div>
       <p style={{ fontFamily: chartTheme.fontFamily, fontSize: 9, color: chartTheme.textDim, letterSpacing: '0.1em', marginBottom: 6 }}>
         {title}
       </p>
-      <div style={{ width: '100%', height: 160 }}>
+      <div style={{ width: '100%', height: height ?? 160 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -106,12 +106,11 @@ export function PortfolioCompositionCharts({ composition }: Props) {
   // If nothing has data, render nothing (parent section can be hidden by caller)
   if (charts.length === 0) return null
 
-  // Use a 2-column grid; single chart spans both columns
-  const isSingle = charts.length === 1
+  const donutHeight = charts.length === 1 ? 220 : charts.length === 2 ? 200 : 160
   return (
-    <div className={isSingle ? 'grid grid-cols-1 gap-8' : 'grid grid-cols-2 gap-8'}>
+    <div className={charts.length === 1 ? 'grid grid-cols-1 gap-8' : 'grid grid-cols-2 gap-8'}>
       {charts.map(c => (
-        <MiniDonut key={c.title} title={c.title} data={c.data} />
+        <MiniDonut key={c.title} title={c.title} data={c.data} height={donutHeight} />
       ))}
     </div>
   )

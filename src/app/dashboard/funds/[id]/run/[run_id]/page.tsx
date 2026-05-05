@@ -10,7 +10,6 @@ import { DISCLAIMER } from '@/lib/anthropic/prompts'
 import type { KeyChanges } from '@/lib/compareRuns'
 import { ChangeSummary } from '@/components/dashboard/ChangeSummary'
 import { PerformanceTable } from '@/components/charts/PerformanceTable'
-import { ReturnHistogram } from '@/components/charts/ReturnHistogram'
 import { FundSizeChart } from '@/components/charts/FundSizeChart'
 import { FundFlowsChart } from '@/components/charts/FundFlowsChart'
 import { CreditMetricsGrid } from '@/components/charts/CreditMetricsGrid'
@@ -211,7 +210,7 @@ export default function RunDetailPage() {
       const res = await fetch('/api/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fund_id: fundId, document_ids: [], prior_run_id: runId }),
+        body: JSON.stringify({ fund_id: fundId, prior_run_id: runId }),
       })
       const data = await res.json()
       if (res.ok) router.push(`/dashboard/funds/${fundId}/run/${data.id}`)
@@ -276,16 +275,17 @@ export default function RunDetailPage() {
     { label: 'PERFORMANCE FEE',    value: snap?.performance_fee_pct != null ? fmtPct(snap.performance_fee_pct) : null },
     { label: 'HURDLE RATE',        value: snap?.hurdle_rate_pct != null ? fmtPct(snap.hurdle_rate_pct) : null },
     { label: 'MIN INVESTMENT',     value: snap?.minimum_investment != null ? fmtDollars(snap.minimum_investment) : null },
-    { label: 'LIQUIDITY TERMS',    value: snap?.liquidity_terms ?? null },
-    { label: 'LEVERAGE TARGET',    value: snap?.leverage_target ?? null },
-    { label: 'BENCHMARK',          value: perf?.benchmark_name ?? null },
-    { label: 'STRATEGY',           value: snap?.strategy_label ?? strategy },
   ]
 
   /* ─── Render ─────────────────────────────────────────────── */
 
   return (
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+        }
+      `}</style>
 
       {/* Breadcrumb */}
       <div
@@ -315,9 +315,29 @@ export default function RunDetailPage() {
       {/* Sections */}
       <div className="flex flex-col gap-px px-8 py-8">
 
-        {/* Change detection banner */}
+        {/* Change detection banner — collapsible, hidden in PDF print */}
         {run.key_changes && (
-          <ChangeSummary changes={run.key_changes} />
+          <details className="no-print change-summary-details" style={{ marginBottom: 1 }}>
+            <summary
+              className={mono.className}
+              style={{
+                fontSize: 10,
+                color: '#666666',
+                letterSpacing: '0.15em',
+                cursor: 'pointer',
+                userSelect: 'none',
+                listStyle: 'none',
+                padding: '12px 24px',
+                border: '1px solid #2a2a2a',
+                background: '#0D0D0D',
+              }}
+            >
+              CHANGES SINCE LAST RUN ▸
+            </summary>
+            <div style={{ marginTop: 1 }}>
+              <ChangeSummary changes={run.key_changes} />
+            </div>
+          </details>
         )}
 
         {/* SECTION 1 — Header */}
@@ -326,14 +346,14 @@ export default function RunDetailPage() {
             <div>
               <h1
                 className={garamond.className}
-                style={{ fontSize: 40, fontWeight: 300, color: '#E8E0D0', lineHeight: 1.1, marginBottom: 10 }}
+                style={{ fontSize: 36, fontWeight: 300, color: '#E8E0D0', lineHeight: 1.1, marginBottom: 8 }}
               >
                 {fundName}
               </h1>
               {metaLine && (
                 <p
                   className={mono.className}
-                  style={{ fontSize: 11, color: '#666666', letterSpacing: '0.08em', marginBottom: 16 }}
+                  style={{ fontSize: 11, color: '#666666', letterSpacing: '0.08em', marginBottom: 12 }}
                 >
                   {metaLine}
                 </p>
@@ -377,81 +397,126 @@ export default function RunDetailPage() {
           </div>
         </SectionBox>
 
-        {/* SECTION 2 — Fund Snapshot */}
-        <SectionBox title="FUND SNAPSHOT">
+        {/* SECTION 2 — Top Zone: Snapshot + Merits/Risks + Overview Blurb */}
+        <SectionBox>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 1,
-              background: '#2a2a2a',
-              border: '1px solid #2a2a2a',
+              gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.2fr) minmax(260px, 1fr)',
+              gap: 32,
             }}
           >
-            {snapshotCards.map((card) => (
-              <SnapshotCard key={card.label} label={card.label} value={card.value} />
-            ))}
-          </div>
-        </SectionBox>
-
-        {/* SECTION 3 — Merits & Risks */}
-        <SectionBox title="MERITS & RISKS">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#2a2a2a' }}>
-            {/* Key Strengths */}
-            <div style={{ background: '#040e04', border: '1px solid #0a1a0a', padding: 20 }}>
-              <p
-                className={mono.className}
-                style={{ fontSize: 9, color: '#4ade80', letterSpacing: '0.12em', marginBottom: 14 }}
-              >
-                KEY STRENGTHS
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(report?.merits ?? []).length > 0 ? (
-                  report!.merits.map((merit, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ color: '#4ade80', fontSize: 13, flexShrink: 0, lineHeight: 1.6 }}>✓</span>
-                      <p className={mono.className} style={{ fontSize: 11, color: '#999999', lineHeight: 1.7 }}>
-                        {merit}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className={mono.className} style={{ fontSize: 11, color: '#333333' }}>No data</p>
-                )}
+            {/* COLUMN 1 — Snapshot */}
+            <div>
+              <SectionTitle>SNAPSHOT</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {snapshotCards.map((card, i) => (
+                  <div
+                    key={card.label}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      gap: 12,
+                      padding: '10px 0',
+                      borderTop: i === 0 ? '1px solid #1e1e1e' : 'none',
+                      borderBottom: '1px solid #1e1e1e',
+                    }}
+                  >
+                    <span
+                      className={mono.className}
+                      style={{ fontSize: 9, color: '#666666', letterSpacing: '0.1em', flexShrink: 0 }}
+                    >
+                      {card.label}
+                    </span>
+                    <span
+                      className={mono.className}
+                      style={{
+                        fontSize: 11,
+                        color: card.value ? '#E8E0D0' : '#333333',
+                        textAlign: 'right',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {card.value ?? '—'}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-            {/* Key Risks */}
-            <div style={{ background: '#0d0a00', border: '1px solid #1a1400', padding: 20 }}>
-              <p
-                className={mono.className}
-                style={{ fontSize: 9, color: '#C9A84C', letterSpacing: '0.12em', marginBottom: 14 }}
-              >
-                KEY RISKS
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(report?.risks ?? []).length > 0 ? (
-                  report!.risks.map((risk, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ color: '#C9A84C', fontSize: 13, flexShrink: 0, lineHeight: 1.6 }}>⚠</span>
-                      <p className={mono.className} style={{ fontSize: 11, color: '#999999', lineHeight: 1.7 }}>
-                        {risk}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className={mono.className} style={{ fontSize: 11, color: '#333333' }}>No data</p>
-                )}
+
+            {/* COLUMN 2 — Merits & Risks stacked */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Merits */}
+              <div>
+                <p
+                  className={mono.className}
+                  style={{ fontSize: 9, color: '#4ade80', letterSpacing: '0.12em', marginBottom: 10 }}
+                >
+                  KEY STRENGTHS
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(report?.merits ?? []).length > 0 ? (
+                    report!.merits.map((merit, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ color: '#4ade80', fontSize: 11, flexShrink: 0, lineHeight: 1.5 }}>✓</span>
+                        <p className={mono.className} style={{ fontSize: 10, color: '#999999', lineHeight: 1.55 }}>
+                          {merit}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className={mono.className} style={{ fontSize: 10, color: '#333333' }}>No data</p>
+                  )}
+                </div>
               </div>
+              {/* Risks */}
+              <div>
+                <p
+                  className={mono.className}
+                  style={{ fontSize: 9, color: '#C9A84C', letterSpacing: '0.12em', marginBottom: 10 }}
+                >
+                  KEY CONCERNS
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(report?.risks ?? []).length > 0 ? (
+                    report!.risks.map((risk, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ color: '#C9A84C', fontSize: 11, flexShrink: 0, lineHeight: 1.5 }}>⚠</span>
+                        <p className={mono.className} style={{ fontSize: 10, color: '#999999', lineHeight: 1.55 }}>
+                          {risk}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className={mono.className} style={{ fontSize: 10, color: '#333333' }}>No data</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 3 — Fund Overview Blurb */}
+            <div>
+              <SectionTitle>OVERVIEW</SectionTitle>
+              {sections?.fund_overview ? (
+                <p
+                  className={mono.className}
+                  style={{ fontSize: 11, color: '#999999', lineHeight: 1.7 }}
+                >
+                  {sections.fund_overview}
+                </p>
+              ) : (
+                <p className={mono.className} style={{ fontSize: 11, color: '#333333' }}>
+                  No overview available.
+                </p>
+              )}
             </div>
           </div>
         </SectionBox>
 
         {/* SECTION 4 — Performance */}
         <SectionBox title="PERFORMANCE">
-          <div style={{ marginBottom: 28 }}>
-            <PerformanceTable performance={perf} />
-          </div>
-          <ReturnHistogram performance={perf} />
+          <PerformanceTable performance={perf} />
         </SectionBox>
 
         {/* SECTION 5 — Fund Size & Flows */}
@@ -472,7 +537,7 @@ export default function RunDetailPage() {
 
         {/* SECTION 6 — Credit Quality Metrics */}
         <SectionBox title="CREDIT QUALITY METRICS">
-          <CreditMetricsGrid metrics={metrics} />
+          <CreditMetricsGrid metrics={metrics} changes={run.key_changes?.changes ?? []} />
         </SectionBox>
 
         {/* SECTION 7 — Portfolio Composition */}
@@ -580,13 +645,21 @@ export default function RunDetailPage() {
               </div>
 
               {quality.null_fields?.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <p
+                <details style={{ marginTop: 16 }} className="missing-fields-details no-print">
+                  <summary
                     className={mono.className}
-                    style={{ fontSize: 9, color: '#666666', letterSpacing: '0.1em', marginBottom: 10 }}
+                    style={{
+                      fontSize: 9,
+                      color: '#666666',
+                      letterSpacing: '0.1em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      listStyle: 'none',
+                      marginBottom: 10,
+                    }}
                   >
-                    MISSING FIELDS
-                  </p>
+                    MISSING FIELDS ({quality.null_fields.length}) ▸
+                  </summary>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {quality.null_fields.map((field) => (
                       <span
@@ -604,7 +677,7 @@ export default function RunDetailPage() {
                       </span>
                     ))}
                   </div>
-                </div>
+                </details>
               )}
             </div>
           )}

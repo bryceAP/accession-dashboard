@@ -66,10 +66,15 @@ function trimToRelevantSections(text: string, fileName: string): string {
   addFirst('FINANCIAL HIGHLIGHTS', ['Financial Highlights', 'Selected Financial Data', 'Selected Consolidated Financial Data'], 8000)
 
   // 3. Statement of Assets and Liabilities
-  addFirst('STATEMENT OF ASSETS AND LIABILITIES', ['Statement of Assets and Liabilities', 'Consolidated Statement of Assets', 'Consolidated Statements of Assets and Liabilities', 'Consolidated Balance Sheet'], 5000)
+  addFirst('STATEMENT OF ASSETS AND LIABILITIES', ['Statement of Assets and Liabilities', 'Consolidated Statement of Assets', 'Consolidated Statements of Assets and Liabilities', 'Consolidated Balance Sheet'], 10000)
 
   // 4. Statement of Operations
-  addFirst('STATEMENT OF OPERATIONS', ['Statement of Operations', 'Consolidated Statement of Operations', 'Consolidated Statements of Operations'], 4000)
+  addFirst('STATEMENT OF OPERATIONS', ['Statement of Operations', 'Consolidated Statement of Operations', 'Consolidated Statements of Operations'], 8000)
+  addFirst('TOTAL INVESTMENT INCOME', ['Total investment income', 'total investment income'], 2500)
+  addFirst('TOTAL ASSETS', ['Total assets', 'TOTAL ASSETS'], 2000)
+  addFirst('TOTAL INVESTMENTS AT FAIR VALUE', ['Total investments at fair value', 'Investments, at fair value', 'Total investments, at fair value'], 2500)
+  addFirst('PORTFOLIO COMPANY COUNT', ['portfolio companies', 'underlying credits', 'investment positions', 'Number of borrowers'], 1500)
+  addFirst('BORROWER CREDIT METRICS', ['Weighted average interest coverage', 'weighted average interest coverage', 'Weighted average net leverage', 'weighted average net leverage', 'interest coverage ratio', 'fixed charge coverage'], 2000)
 
   // 5. Interest Rate Risk
   addFirst('INTEREST RATE RISK', ['Interest Rate Risk', 'interest rate risk'], 3000)
@@ -78,7 +83,7 @@ function trimToRelevantSections(text: string, fileName: string): string {
   addAllOccurrences('NON-ACCRUAL', ['non-accrual', 'non-earning'], 2000, 4)
 
   // 7. PIK income occurrences
-  addAllOccurrences('PIK INCOME', ['payment-in-kind', 'PIK interest', 'PIK income'], 1500, 5)
+  addAllOccurrences('PIK INCOME', ['Payment-in-kind interest income', 'PIK interest income', 'Payment-in-kind income', 'Payment-in-kind dividend income', 'PIK dividend income', 'payment-in-kind', 'PIK interest', 'PIK income'], 2500, 4)
 
   // 8. Portfolio statistics / quality
   addFirst('PORTFOLIO STATISTICS', ['Portfolio Statistics', 'Portfolio Characteristics', 'Portfolio Quality', 'Investment Portfolio', 'Portfolio Composition'], 4000)
@@ -151,70 +156,90 @@ export async function POST(request: Request) {
 
     const NATIVE_PDF_LIMIT = 30 * 1024 * 1024
 
+    // If document_ids array is missing or empty, auto-fetch all documents for the fund
+    let docsToProcess: { file_name: string; file_path: string; document_type: string }[] = []
+
     if (Array.isArray(document_ids) && document_ids.length > 0) {
       const { data: docs } = await supabase
         .from('fund_documents')
         .select('file_name, file_path, document_type')
         .in('id', document_ids)
+      docsToProcess = docs ?? []
+    } else {
+      const { data: docs } = await supabase
+        .from('fund_documents')
+        .select('file_name, file_path, document_type')
+        .eq('fund_id', fund_id)
+      docsToProcess = docs ?? []
+      console.log(`[runs] Auto-fetched ${docsToProcess.length} documents for fund ${fund_id} (no document_ids in request)`)
+    }
 
-      for (const doc of docs ?? []) {
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('fund-documents')
-          .download(doc.file_path)
+    if (docsToProcess.length === 0) {
+      await supabase.from('dashboard_runs').update({ status: 'error' }).eq('id', run.id)
+      await supabase.from('funds').update({ status: 'error' }).eq('id', fund_id)
+      return NextResponse.json(
+        { error: 'No documents associated with this fund. Upload documents before running analysis.' },
+        { status: 400 }
+      )
+    }
 
-        if (downloadError) {
-          console.error(`Storage download failed for ${doc.file_path}:`, downloadError)
-        }
+    for (const doc of docsToProcess) {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('fund-documents')
+        .download(doc.file_path)
 
-        if (fileData) {
-          const bytes = await fileData.arrayBuffer()
-          const buffer = Buffer.from(bytes)
-          const filename = `${doc.document_type}: ${doc.file_name}`
+      if (downloadError) {
+        console.error(`Storage download failed for ${doc.file_path}:`, downloadError)
+      }
 
-          const fileExtension = doc.file_name.split('.').pop()?.toLowerCase() ?? ''
-          const isHtml = fileExtension === 'htm' || fileExtension === 'html'
+      if (fileData) {
+        const bytes = await fileData.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        const filename = `${doc.document_type}: ${doc.file_name}`
 
-          if (isHtml) {
-            const rawHtml = buffer.toString('utf-8')
-            // Strip HTML tags but preserve text content and basic structure (newlines between block elements)
-            const cleaned = rawHtml
-              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-              .replace(/<\/(p|div|tr|h[1-6]|li|br|table)>/gi, '\n')
-              .replace(/<br\s*\/?>/gi, '\n')
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/&nbsp;/g, ' ')
-              .replace(/&amp;/g, '&')
-              .replace(/&lt;/g, '<')
-              .replace(/&gt;/g, '>')
-              .replace(/&quot;/g, '"')
-              .replace(/&#39;/g, "'")
-              .replace(/[ \t]+/g, ' ')
-              .replace(/\n{3,}/g, '\n\n')
-              .trim()
+        const fileExtension = doc.file_name.split('.').pop()?.toLowerCase() ?? ''
+        const isHtml = fileExtension === 'htm' || fileExtension === 'html'
 
-            const finalText = cleaned.length > 200_000
-              ? trimToRelevantSections(cleaned, doc.file_name)
-              : cleaned
+        if (isHtml) {
+          const rawHtml = buffer.toString('utf-8')
+          // Strip HTML tags but preserve text content and basic structure (newlines between block elements)
+          const cleaned = rawHtml
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<\/(p|div|tr|h[1-6]|li|br|table)>/gi, '\n')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/[ \t]+/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
 
-            console.log(`[runs] HTML EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB raw → ${cleaned.length} chars cleaned → ${finalText.length} chars sent)`)
-            documents.push({ type: 'text', text: finalText, filename })
-          } else if (buffer.byteLength <= NATIVE_PDF_LIMIT) {
-            console.log(`[runs] NATIVE PDF: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB)`)
-            documents.push({ type: 'pdf', base64: buffer.toString('base64'), filename })
-          } else {
-            console.log(`[runs] TEXT EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB) — exceeds ${NATIVE_PDF_LIMIT / 1024 / 1024} MB native PDF limit, falling back to pdf-parse`)
-            const parsed = await pdfParse(buffer)
-            const extractedText = parsed.text
-            console.log(`[runs] Total extracted text length for ${doc.file_name}: ${extractedText.length} characters`)
-            console.log(`[runs] Extracted text from ${doc.file_name} (first 2000 chars):`, extractedText.substring(0, 2000))
+          const finalText = cleaned.length > 200_000
+            ? trimToRelevantSections(cleaned, doc.file_name)
+            : cleaned
 
-            const finalText = extractedText.length > 100_000
-              ? trimToRelevantSections(extractedText, doc.file_name)
-              : extractedText
+          console.log(`[runs] HTML EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB raw → ${cleaned.length} chars cleaned → ${finalText.length} chars sent)`)
+          documents.push({ type: 'text', text: finalText, filename })
+        } else if (buffer.byteLength <= NATIVE_PDF_LIMIT) {
+          console.log(`[runs] NATIVE PDF: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB)`)
+          documents.push({ type: 'pdf', base64: buffer.toString('base64'), filename })
+        } else {
+          console.log(`[runs] TEXT EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB) — exceeds ${NATIVE_PDF_LIMIT / 1024 / 1024} MB native PDF limit, falling back to pdf-parse`)
+          const parsed = await pdfParse(buffer)
+          const extractedText = parsed.text
+          console.log(`[runs] Total extracted text length for ${doc.file_name}: ${extractedText.length} characters`)
+          console.log(`[runs] Extracted text from ${doc.file_name} (first 2000 chars):`, extractedText.substring(0, 2000))
 
-            documents.push({ type: 'text', text: finalText, filename })
-          }
+          const finalText = extractedText.length > 100_000
+            ? trimToRelevantSections(extractedText, doc.file_name)
+            : extractedText
+
+          documents.push({ type: 'text', text: finalText, filename })
         }
       }
     }

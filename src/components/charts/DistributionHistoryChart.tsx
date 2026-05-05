@@ -33,9 +33,9 @@ function NoData() {
 export function DistributionHistoryChart({ data, annualizedRatePct }: Props) {
   if (!data?.length) return <NoData />
 
-  const rows = [...data]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map(d => ({ ...d, label: fmtDate(d.date) }))
+  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date))
+  const recent = sorted.length > 9 ? sorted.slice(-9) : sorted
+  const rows = recent.map(d => ({ ...d, label: fmtDate(d.date) }))
 
   // Reference line: annualizedRate / periods-per-year ≈ per-distribution amount
   // Since we don't know frequency, just show the annualized rate as a dashed label line
@@ -43,7 +43,7 @@ export function DistributionHistoryChart({ data, annualizedRatePct }: Props) {
   const refAmt = annualizedRatePct != null ? annualizedRatePct : null
 
   return (
-    <div style={{ width: '100%', height: 200, fontFamily: chartTheme.fontFamily }}>
+    <div style={{ width: '100%', height: 140, fontFamily: chartTheme.fontFamily }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={chartTheme.grid} vertical={false} />
