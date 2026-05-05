@@ -12,6 +12,25 @@ interface GenerateParams {
   documents: Array<PdfDocument | TextDocument>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeFields(data: any): any {
+  if (data.fund_snapshot) {
+    const fs = data.fund_snapshot
+    if (fs.aum_m !== undefined && !fs.fund_size_m) fs.fund_size_m = fs.aum_m
+    if (fs.net_assets_m !== undefined && !fs.fund_size_m) fs.fund_size_m = fs.net_assets_m
+    if (fs.distribution_rate_pct !== undefined && !fs.distribution_rate_annualized_pct) fs.distribution_rate_annualized_pct = fs.distribution_rate_pct
+    if (fs.avg_ytm_pct !== undefined && !fs.weighted_avg_yield_pct) {
+      if (!data.credit_metrics) data.credit_metrics = {}
+      data.credit_metrics.weighted_avg_yield_pct = fs.avg_ytm_pct
+    }
+    if (fs.first_lien_pct !== undefined && !fs.senior_secured_pct) {
+      if (!data.credit_metrics) data.credit_metrics = {}
+      data.credit_metrics.senior_secured_pct = fs.first_lien_pct
+    }
+  }
+  return data
+}
+
 export async function generateFundReport({
   fund_name,
   manager,
@@ -84,7 +103,7 @@ export async function generateFundReport({
   }
 
   try {
-    return JSON.parse(cleaned) as FundReport;
+    return normalizeFields(JSON.parse(cleaned)) as FundReport;
   } catch {
     console.error('Raw Claude response:', text)
     throw new Error('Claude returned invalid JSON — check server logs for the raw response.')
