@@ -8,47 +8,67 @@ const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-par
 
 export const maxDuration = 300
 
+const HARD_CAP = 40_000
+
 function trimToRelevantSections(text: string, fileName: string): string {
   const lower = text.toLowerCase()
   const parts: string[] = []
 
-  const addSection = (marker: string, maxLen: number) => {
-    const idx = lower.indexOf(marker.toLowerCase())
-    if (idx !== -1) {
-      parts.push(`\n\n--- SECTION: ${marker.toUpperCase()} ---\n` + text.substring(idx, idx + maxLen))
+  const addFirst = (markers: string[], windowLen: number) => {
+    for (const marker of markers) {
+      const idx = lower.indexOf(marker.toLowerCase())
+      if (idx !== -1) {
+        parts.push(`\n\n--- SECTION: ${markers[0].toUpperCase()} ---\n` + text.substring(idx, idx + windowLen))
+        return
+      }
     }
   }
 
-  const addAllOccurrences = (keyword: string, surrounding: number) => {
+  const addAllOccurrences = (markers: string[], windowLen: number, maxOccurrences: number) => {
+    let found = 0
     let start = 0
-    while (true) {
-      const idx = lower.indexOf(keyword.toLowerCase(), start)
-      if (idx === -1) break
-      const from = Math.max(0, idx - surrounding / 2)
-      const to = Math.min(text.length, idx + surrounding / 2)
-      parts.push(`\n\n--- OCCURRENCE: ${keyword.toUpperCase()} ---\n` + text.substring(from, to))
-      start = idx + 1
+    outer: while (found < maxOccurrences) {
+      let earliest = -1
+      let earliestMarker = ''
+      for (const marker of markers) {
+        const idx = lower.indexOf(marker.toLowerCase(), start)
+        if (idx !== -1 && (earliest === -1 || idx < earliest)) {
+          earliest = idx
+          earliestMarker = marker
+        }
+      }
+      if (earliest === -1) break outer
+      const half = Math.floor(windowLen / 2)
+      const from = Math.max(0, earliest - half)
+      const to = Math.min(text.length, earliest + half)
+      parts.push(`\n\n--- OCCURRENCE: ${earliestMarker.toUpperCase()} ---\n` + text.substring(from, to))
+      start = earliest + 1
+      found++
     }
   }
 
-  addSection('Letter to Shareholders', 5000)
-  addSection('Statement of Assets and Liabilities', 3000)
-  addSection('Statement of Operations', 3000)
-  addSection('Financial Highlights', 3000)
-  addSection('Portfolio Characteristics', 3000)
-  addSection('Portfolio Statistics', 3000)
-  addSection('Notes to Financial Statements', 5000)
+  // Named sections — first occurrence only
+  addFirst(['Financial Highlights'], 6000)
+  addFirst(['Statement of Assets and Liabilities'], 5000)
+  addFirst(['Statement of Operations'], 4000)
+  addFirst(['Interest Rate Risk'], 3000)
+  addFirst(['floating rate', 'variable rate'], 2000)
+  addFirst(['portfolio composition', 'portfolio statistics'], 4000)
+  addFirst(['credit rating', 'rating breakdown'], 2000)
+  addFirst(['geographic', 'country'], 2000)
+  addFirst(['net leverage', 'debt/EBITDA'], 1000)
+  addFirst(['Letter to Shareholders'], 3000)
 
-  addAllOccurrences('non-accrual', 2000)
-  addAllOccurrences('PIK', 2000)
-  addAllOccurrences('payment-in-kind', 2000)
-  addAllOccurrences('floating rate', 1000)
-  addAllOccurrences('interest coverage', 1000)
+  // Keyword occurrences — capped
+  addAllOccurrences(['non-accrual'], 1500, 4)
+  addAllOccurrences(['payment-in-kind', 'PIK income'], 1000, 5)
 
-  parts.push('\n\n--- TAIL: LAST 10000 CHARS ---\n' + text.substring(text.length - 10000))
+  // Tail
+  parts.push('\n\n--- TAIL: LAST 3000 CHARS ---\n' + text.substring(text.length - 3000))
 
-  const trimmed = parts.join('')
-  console.log(`[runs] Trimmed ${fileName} from ${text.length} to ${trimmed.length} characters`)
+  const combined = parts.join('')
+  const trimmed = combined.length > HARD_CAP ? combined.substring(0, HARD_CAP) : combined
+  console.log(`[runs] Trimmed ${fileName}: ${text.length} → ${trimmed.length} characters`)
   return trimmed
 }
 
