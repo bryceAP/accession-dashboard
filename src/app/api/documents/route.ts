@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       .from('fund_documents')
       .select('*')
       .eq('fund_id', fundId)
-      .order('created_at', { ascending: false })
+      .order('uploaded_at', { ascending: false })
 
     if (error) {
       console.error('GET /api/documents supabase error:', error)

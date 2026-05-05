@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { anthropic } from "./client";
 import { PRIVATE_CREDIT_SYSTEM_PROMPT } from "./prompts";
 import type { FundReport } from "@/types";
@@ -57,22 +58,21 @@ export async function generateFundReport({
     messages: [{ role: "user", content }],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response received from Claude");
-  }
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
 
-  const raw = textBlock.text.trim();
+  const cleaned = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
 
   try {
-    return JSON.parse(raw) as FundReport;
+    return JSON.parse(cleaned) as FundReport;
   } catch {
-    console.error(
-      "Claude returned invalid JSON. Raw response (first 1000 chars):",
-      raw.slice(0, 1000)
-    );
-    throw new Error(
-      "Claude returned invalid JSON — check server logs for the raw response."
-    );
+    console.error('Raw Claude response:', text)
+    throw new Error('Claude returned invalid JSON — check server logs for the raw response.')
   }
 }
