@@ -17,7 +17,7 @@ interface Props {
 }
 
 function fmtDate(d: string) {
-  try { return format(parseISO(d), 'MMM yy') } catch { return d }
+  try { return format(parseISO(d), 'MMM d, yy') } catch { return d }
 }
 
 function NoData() {
@@ -53,6 +53,9 @@ export function DistributionHistoryChart({ data, annualizedRatePct }: Props) {
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
+            angle={-30}
+            textAnchor="end"
+            height={48}
           />
           <YAxis
             tickFormatter={(v: number) => `$${v.toFixed(2)}`}

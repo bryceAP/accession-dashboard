@@ -8,7 +8,7 @@ const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-par
 
 export const maxDuration = 300
 
-const HARD_CAP = 80_000
+const HARD_CAP = 250_000
 
 function trimToRelevantSections(text: string, fileName: string): string {
   const lower = text.toLowerCase()
@@ -60,16 +60,16 @@ function trimToRelevantSections(text: string, fileName: string): string {
   }
 
   // 1. Letter to Shareholders
-  addFirst('LETTER TO SHAREHOLDERS', ['Letter to Shareholders'], 4000)
+  addFirst('LETTER TO SHAREHOLDERS', ['Letter to Shareholders', 'Letter from the CEO', 'Chairman\'s Letter'], 4000)
 
   // 2. Financial Highlights
-  addFirst('FINANCIAL HIGHLIGHTS', ['Financial Highlights'], 8000)
+  addFirst('FINANCIAL HIGHLIGHTS', ['Financial Highlights', 'Selected Financial Data', 'Selected Consolidated Financial Data'], 8000)
 
   // 3. Statement of Assets and Liabilities
-  addFirst('STATEMENT OF ASSETS AND LIABILITIES', ['Statement of Assets and Liabilities', 'Consolidated Statement of Assets'], 5000)
+  addFirst('STATEMENT OF ASSETS AND LIABILITIES', ['Statement of Assets and Liabilities', 'Consolidated Statement of Assets', 'Consolidated Statements of Assets and Liabilities', 'Consolidated Balance Sheet'], 5000)
 
   // 4. Statement of Operations
-  addFirst('STATEMENT OF OPERATIONS', ['Statement of Operations', 'Consolidated Statement of Operations'], 4000)
+  addFirst('STATEMENT OF OPERATIONS', ['Statement of Operations', 'Consolidated Statement of Operations', 'Consolidated Statements of Operations'], 4000)
 
   // 5. Interest Rate Risk
   addFirst('INTEREST RATE RISK', ['Interest Rate Risk', 'interest rate risk'], 3000)
@@ -81,7 +81,7 @@ function trimToRelevantSections(text: string, fileName: string): string {
   addAllOccurrences('PIK INCOME', ['payment-in-kind', 'PIK interest', 'PIK income'], 1500, 5)
 
   // 8. Portfolio statistics / quality
-  addFirst('PORTFOLIO STATISTICS', ['Portfolio Statistics', 'Portfolio Characteristics', 'Portfolio Quality'], 4000)
+  addFirst('PORTFOLIO STATISTICS', ['Portfolio Statistics', 'Portfolio Characteristics', 'Portfolio Quality', 'Investment Portfolio', 'Portfolio Composition'], 4000)
 
   // 9. Credit quality / rating
   addFirst('CREDIT QUALITY', ['Credit Quality', 'Credit Rating', 'Rating Distribution'], 3000)
@@ -91,6 +91,7 @@ function trimToRelevantSections(text: string, fileName: string): string {
 
   // 11. Leverage and borrowings
   addFirst('LEVERAGE AND BORROWINGS', ['Leverage', 'Borrowings', 'Senior Notes', 'Credit Facility'], 3000)
+  addFirst('MD&A', ['Management\'s Discussion and Analysis', 'Item 7. Management', 'Item 7.'], 6000)
 
   // 12. Distributions table
   addFirst('DISTRIBUTIONS', ['Distributions', 'distributions declared', 'distributions per share'], 3000)
@@ -104,7 +105,7 @@ function trimToRelevantSections(text: string, fileName: string): string {
 
   const combined = parts.join('')
   const trimmed = combined.length > HARD_CAP ? combined.substring(0, HARD_CAP) : combined
-  console.log(`[runs] ${fileName}: ${text.length} chars → ${trimmed.length} chars. Sections found: ${foundSections.join(', ')}`)
+  console.log(`[runs] TRIM ${fileName}: ${text.length} chars → ${trimmed.length} chars. Sections matched (${foundSections.length}): ${foundSections.join(', ')}`)
   return trimmed
 }
 
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
       { type: 'text'; text: string; filename: string }
     > = []
 
-    const TEN_MB = 10 * 1024 * 1024
+    const NATIVE_PDF_LIMIT = 30 * 1024 * 1024
 
     if (Array.isArray(document_ids) && document_ids.length > 0) {
       const { data: docs } = await supabase
@@ -170,9 +171,39 @@ export async function POST(request: Request) {
           const buffer = Buffer.from(bytes)
           const filename = `${doc.document_type}: ${doc.file_name}`
 
-          if (buffer.byteLength <= TEN_MB) {
+          const fileExtension = doc.file_name.split('.').pop()?.toLowerCase() ?? ''
+          const isHtml = fileExtension === 'htm' || fileExtension === 'html'
+
+          if (isHtml) {
+            const rawHtml = buffer.toString('utf-8')
+            // Strip HTML tags but preserve text content and basic structure (newlines between block elements)
+            const cleaned = rawHtml
+              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+              .replace(/<\/(p|div|tr|h[1-6]|li|br|table)>/gi, '\n')
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/[ \t]+/g, ' ')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim()
+
+            const finalText = cleaned.length > 200_000
+              ? trimToRelevantSections(cleaned, doc.file_name)
+              : cleaned
+
+            console.log(`[runs] HTML EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB raw → ${cleaned.length} chars cleaned → ${finalText.length} chars sent)`)
+            documents.push({ type: 'text', text: finalText, filename })
+          } else if (buffer.byteLength <= NATIVE_PDF_LIMIT) {
+            console.log(`[runs] NATIVE PDF: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB)`)
             documents.push({ type: 'pdf', base64: buffer.toString('base64'), filename })
           } else {
+            console.log(`[runs] TEXT EXTRACTION: ${doc.file_name} (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB) — exceeds ${NATIVE_PDF_LIMIT / 1024 / 1024} MB native PDF limit, falling back to pdf-parse`)
             const parsed = await pdfParse(buffer)
             const extractedText = parsed.text
             console.log(`[runs] Total extracted text length for ${doc.file_name}: ${extractedText.length} characters`)

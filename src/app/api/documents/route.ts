@@ -47,9 +47,17 @@ export async function POST(request: Request) {
   const storagePath = `${fundId}/${Date.now()}-${file.name}`
   const bytes = await file.arrayBuffer()
 
+  const fileExt = file.name.split('.').pop()?.toLowerCase() ?? ''
+  const contentTypeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    htm: 'text/html',
+    html: 'text/html',
+  }
+  const contentType = contentTypeMap[fileExt] ?? file.type ?? 'application/octet-stream'
+
   const { error: uploadError } = await supabase.storage
     .from('fund-documents')
-    .upload(storagePath, bytes, { contentType: 'application/pdf', upsert: false })
+    .upload(storagePath, bytes, { contentType, upsert: false })
 
   if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 

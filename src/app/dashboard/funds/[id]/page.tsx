@@ -526,7 +526,7 @@ export default function FundDetailPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.htm,.html"
                   onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
                   className="hidden"
                 />

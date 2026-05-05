@@ -13,16 +13,6 @@ interface Slice {
   pct: number
 }
 
-function NoData() {
-  return (
-    <div
-      className="flex items-center justify-center border border-[#1e1e1e]"
-      style={{ height: 180, fontFamily: chartTheme.fontFamily }}
-    >
-      <p className="text-xs tracking-widest" style={{ color: '#333' }}>NO DATA</p>
-    </div>
-  )
-}
 
 function PieLegend({ data }: { data: Slice[] }) {
   return (
@@ -47,17 +37,6 @@ function PieLegend({ data }: { data: Slice[] }) {
 }
 
 function MiniDonut({ title, data }: { title: string; data: Slice[] }) {
-  if (!data?.length) {
-    return (
-      <div>
-        <p style={{ fontFamily: chartTheme.fontFamily, fontSize: 9, color: chartTheme.textDim, letterSpacing: '0.1em', marginBottom: 8 }}>
-          {title}
-        </p>
-        <NoData />
-      </div>
-    )
-  }
-
   return (
     <div>
       <p style={{ fontFamily: chartTheme.fontFamily, fontSize: 9, color: chartTheme.textDim, letterSpacing: '0.1em', marginBottom: 6 }}>
@@ -99,36 +78,41 @@ function MiniDonut({ title, data }: { title: string; data: Slice[] }) {
 }
 
 export function PortfolioCompositionCharts({ composition }: Props) {
-  if (!composition) {
-    return (
-      <div className="grid grid-cols-2 gap-6">
-        {['SECTOR', 'RATING', 'LOAN TYPE', 'GEOGRAPHY'].map(t => (
-          <div key={t}>
-            <p style={{ fontFamily: chartTheme.fontFamily, fontSize: 9, color: chartTheme.textDim, letterSpacing: '0.1em', marginBottom: 8 }}>
-              {t}
-            </p>
-            <NoData />
-          </div>
-        ))}
-      </div>
-    )
+  // Build the list of charts that actually have data
+  const charts: { title: string; data: Slice[] }[] = []
+
+  if (composition?.sector_breakdown?.length) {
+    charts.push({ title: 'SECTOR', data: composition.sector_breakdown })
+  }
+  if (composition?.rating_breakdown?.length) {
+    charts.push({
+      title: 'RATING',
+      data: composition.rating_breakdown.map(d => ({ name: d.rating, pct: d.pct })),
+    })
+  }
+  if (composition?.loan_type_breakdown?.length) {
+    charts.push({
+      title: 'LOAN TYPE',
+      data: composition.loan_type_breakdown.map(d => ({ name: d.type, pct: d.pct })),
+    })
+  }
+  if (composition?.geographic_breakdown?.length) {
+    charts.push({
+      title: 'GEOGRAPHY',
+      data: composition.geographic_breakdown.map(d => ({ name: d.region, pct: d.pct })),
+    })
   }
 
+  // If nothing has data, render nothing (parent section can be hidden by caller)
+  if (charts.length === 0) return null
+
+  // Use a 2-column grid; single chart spans both columns
+  const isSingle = charts.length === 1
   return (
-    <div className="grid grid-cols-2 gap-8">
-      <MiniDonut title="SECTOR" data={composition.sector_breakdown ?? []} />
-      <MiniDonut
-        title="RATING"
-        data={composition.rating_breakdown?.map(d => ({ name: d.rating, pct: d.pct })) ?? []}
-      />
-      <MiniDonut
-        title="LOAN TYPE"
-        data={composition.loan_type_breakdown?.map(d => ({ name: d.type, pct: d.pct })) ?? []}
-      />
-      <MiniDonut
-        title="GEOGRAPHY"
-        data={composition.geographic_breakdown?.map(d => ({ name: d.region, pct: d.pct })) ?? []}
-      />
+    <div className={isSingle ? 'grid grid-cols-1 gap-8' : 'grid grid-cols-2 gap-8'}>
+      {charts.map(c => (
+        <MiniDonut key={c.title} title={c.title} data={c.data} />
+      ))}
     </div>
   )
 }

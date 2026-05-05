@@ -15,9 +15,11 @@ const CONTENT_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  htm: 'text/html',
+  html: 'text/html',
 }
 
-const ALLOWED_EXTENSIONS = new Set(['pdf', 'xlsx', 'docx'])
+const ALLOWED_EXTENSIONS = new Set(['pdf', 'xlsx', 'docx', 'htm', 'html'])
 
 export async function POST(request: Request) {
   const formData = await request.formData()
