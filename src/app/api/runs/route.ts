@@ -8,6 +8,50 @@ const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-par
 
 export const maxDuration = 300
 
+function trimToRelevantSections(text: string, fileName: string): string {
+  const lower = text.toLowerCase()
+  const parts: string[] = []
+
+  const addSection = (marker: string, maxLen: number) => {
+    const idx = lower.indexOf(marker.toLowerCase())
+    if (idx !== -1) {
+      parts.push(`\n\n--- SECTION: ${marker.toUpperCase()} ---\n` + text.substring(idx, idx + maxLen))
+    }
+  }
+
+  const addAllOccurrences = (keyword: string, surrounding: number) => {
+    let start = 0
+    while (true) {
+      const idx = lower.indexOf(keyword.toLowerCase(), start)
+      if (idx === -1) break
+      const from = Math.max(0, idx - surrounding / 2)
+      const to = Math.min(text.length, idx + surrounding / 2)
+      parts.push(`\n\n--- OCCURRENCE: ${keyword.toUpperCase()} ---\n` + text.substring(from, to))
+      start = idx + 1
+    }
+  }
+
+  addSection('Letter to Shareholders', 5000)
+  addSection('Statement of Assets and Liabilities', 3000)
+  addSection('Statement of Operations', 3000)
+  addSection('Financial Highlights', 3000)
+  addSection('Portfolio Characteristics', 3000)
+  addSection('Portfolio Statistics', 3000)
+  addSection('Notes to Financial Statements', 5000)
+
+  addAllOccurrences('non-accrual', 2000)
+  addAllOccurrences('PIK', 2000)
+  addAllOccurrences('payment-in-kind', 2000)
+  addAllOccurrences('floating rate', 1000)
+  addAllOccurrences('interest coverage', 1000)
+
+  parts.push('\n\n--- TAIL: LAST 10000 CHARS ---\n' + text.substring(text.length - 10000))
+
+  const trimmed = parts.join('')
+  console.log(`[runs] Trimmed ${fileName} from ${text.length} to ${trimmed.length} characters`)
+  return trimmed
+}
+
 export async function GET(request: Request) {
   const fundId = new URL(request.url).searchParams.get('fund_id')
   if (!fundId) return NextResponse.json({ error: 'fund_id required' }, { status: 400 })
@@ -77,7 +121,12 @@ export async function POST(request: Request) {
             const extractedText = parsed.text
             console.log(`[runs] Total extracted text length for ${doc.file_name}: ${extractedText.length} characters`)
             console.log(`[runs] Extracted text from ${doc.file_name} (first 2000 chars):`, extractedText.substring(0, 2000))
-            documents.push({ type: 'text', text: extractedText, filename })
+
+            const finalText = extractedText.length > 100_000
+              ? trimToRelevantSections(extractedText, doc.file_name)
+              : extractedText
+
+            documents.push({ type: 'text', text: finalText, filename })
           }
         }
       }
