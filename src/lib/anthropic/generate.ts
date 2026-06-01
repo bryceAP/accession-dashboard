@@ -133,7 +133,12 @@ const FUND_REPORT_SCHEMA = {
     performance: {
       type: "object",
       additionalProperties: false,
-      required: ["nav_history", "fund_size_history", "distribution_history"],
+      required: [
+        "nav_history",
+        "fund_size_history",
+        "distribution_history",
+        "flow_history",
+      ],
       properties: {
         // 11 optional (omitted when unknown)
         ytd_pct: numberField,
@@ -181,6 +186,19 @@ const FUND_REPORT_SCHEMA = {
               date: stringField,
               amount: numberField,
               type: stringField,
+            },
+          },
+        },
+        flow_history: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["date", "subscriptions_m", "redemptions_m"],
+            properties: {
+              date: stringField,
+              subscriptions_m: numberField,
+              redemptions_m: numberField,
             },
           },
         },
@@ -314,6 +332,7 @@ function backfillNulls(report: FundReport): FundReport {
   for (const key of OPTIONAL_PERFORMANCE) {
     if (perf[key] === undefined) perf[key] = null;
   }
+  if (perf.flow_history === undefined) perf.flow_history = [];
   return report;
 }
 

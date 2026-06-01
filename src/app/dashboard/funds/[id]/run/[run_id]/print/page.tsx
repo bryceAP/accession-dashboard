@@ -12,6 +12,7 @@ import { ReturnHistogram } from '@/components/charts/ReturnHistogram'
 import { CreditMetricsGrid } from '@/components/charts/CreditMetricsGrid'
 import { PortfolioCompositionCharts } from '@/components/charts/PortfolioCompositionCharts'
 import { DistributionHistoryChart } from '@/components/charts/DistributionHistoryChart'
+import { InflowsOutflowsChart } from '@/components/charts/InflowsOutflowsChart'
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 const garamond = Cormorant_Garamond({ subsets: ['latin'], weight: ['300', '400', '500'], display: 'swap' })
@@ -335,6 +336,12 @@ export default function PrintPage() {
             data={perf?.distribution_history}
             annualizedRatePct={snap?.distribution_rate_annualized_pct}
           />
+        </div>
+
+        {/* ─── PAGE 7b: Capital Flows ─────────────────────────────── */}
+        <div className="page-break" style={PAGE}>
+          <SectionLabel>CAPITAL FLOWS (INFLOWS / OUTFLOWS)</SectionLabel>
+          <InflowsOutflowsChart data={perf?.flow_history} />
         </div>
 
         {/* ─── PAGES 8+: Written Analysis ─────────────────────────── */}

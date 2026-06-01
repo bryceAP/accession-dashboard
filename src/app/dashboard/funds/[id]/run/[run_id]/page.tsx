@@ -15,6 +15,7 @@ import { FundFlowsChart } from '@/components/charts/FundFlowsChart'
 import { CreditMetricsGrid } from '@/components/charts/CreditMetricsGrid'
 import { PortfolioCompositionCharts } from '@/components/charts/PortfolioCompositionCharts'
 import { DistributionHistoryChart } from '@/components/charts/DistributionHistoryChart'
+import { InflowsOutflowsChart } from '@/components/charts/InflowsOutflowsChart'
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 const garamond = Cormorant_Garamond({
@@ -532,6 +533,11 @@ export default function RunDetailPage() {
             data={perf?.distribution_history}
             annualizedRatePct={snap?.distribution_rate_annualized_pct}
           />
+        </SectionBox>
+
+        {/* SECTION 8b — Capital Flows (Inflows / Outflows) */}
+        <SectionBox title="CAPITAL FLOWS (INFLOWS / OUTFLOWS)">
+          <InflowsOutflowsChart data={perf?.flow_history} />
         </SectionBox>
 
         {/* WRITTEN ANALYSIS divider */}

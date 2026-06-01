@@ -18,6 +18,7 @@ Primary source for: nav_per_share, distribution_rate_annualized_pct, fund_size_m
 SEC filing (N-CSR for annual, N-CSRS for semi-annual). Primary source for: pik_pct, deployed_pct, non_accrual_pct, net_leverage_turns, fixed_charge_ratio, nav_history, fund_size_history, distribution_history. Key sections to find:
 - Statement of Assets and Liabilities → total investments at fair value, total assets, net assets, leverage. Calculate deployed_pct = total investments / total assets × 100.
 - Statement of Operations → total investment income, PIK interest income, interest income. Calculate pik_pct = PIK income / total investment income × 100.
+- Statement of Changes in Net Assets → subscriptions/contributions/proceeds from sale of shares and redemptions/repurchases/cost of shares redeemed by period. Populate flow_history with one entry per reporting period (express both amounts in millions, redemptions_m as a positive number — the chart will display them as outflows). If only annual totals are shown, emit one entry per fiscal year.
 - Schedule of Investments → individual holdings (validates number_of_portfolio_companies).
 - Notes to Financial Statements → fee structures, valuation methodology, leverage facilities.
 - Letter to Shareholders (front of document) → narrative metrics including floating_rate_pct, yield commentary, portfolio company count, sector commentary.
@@ -120,7 +121,8 @@ Your response must match this exact structure and field names:
     "as_of_date": "YYYY-MM-DD or null",
     "nav_history": [{ "date": "YYYY-MM-DD", "nav": number }],
     "fund_size_history": [{ "date": "YYYY-MM-DD", "aum_m": number }],
-    "distribution_history": [{ "date": "YYYY-MM-DD", "amount": number, "type": "string" }]
+    "distribution_history": [{ "date": "YYYY-MM-DD", "amount": number, "type": "string" }],
+    "flow_history": [{ "date": "YYYY-MM-DD", "subscriptions_m": number, "redemptions_m": number }]
   },
   "portfolio_composition": {
     "sector_breakdown": [{ "name": "string", "pct": number }],
@@ -151,7 +153,7 @@ Your response must match this exact structure and field names:
 }
 
 Key rules for arrays:
-- nav_history, fund_size_history, distribution_history: return [] if no data found
+- nav_history, fund_size_history, distribution_history, flow_history: return [] if no data found
 - sector_breakdown, rating_breakdown, loan_type_breakdown, geographic_breakdown: return [] if no data found
 - merits: 3-6 concise bullet strings summarizing the fund's key investment merits
 - risks: 3-6 concise bullet strings summarizing the fund's key investment risks (distinct from the prose in report_sections.risk_analysis)

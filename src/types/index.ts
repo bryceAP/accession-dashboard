@@ -14,6 +14,12 @@ export interface DistributionHistory {
   type: string
 }
 
+export interface FlowHistory {
+  date: string
+  subscriptions_m: number
+  redemptions_m: number
+}
+
 export interface SectorBreakdown {
   name: string
   pct: number
@@ -83,6 +89,7 @@ export interface Performance {
   nav_history: NavHistory[]
   fund_size_history: FundSizeHistory[]
   distribution_history: DistributionHistory[]
+  flow_history: FlowHistory[]
 }
 
 export interface PortfolioComposition {
