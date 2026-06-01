@@ -9,6 +9,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'] })
 const DOC_TYPES = ['Fact Sheet', 'PPM', 'Supplement', 'Annual Report', 'Tear Sheet', '10-K', '10-Q', 'Other']
 
 type UploadStatus = 'queued' | 'uploading' | 'done' | 'error'
+type UploadStage = 'url' | 'put' | 'finalize'
 
 interface QueuedFile {
   id: string
@@ -16,7 +17,9 @@ interface QueuedFile {
   docType: string
   status: UploadStatus
   error?: string
-  progress?: number // 0..100, set during the PUT
+  stage?: UploadStage // which step within 'uploading'
+  progress?: number   // 0..100 — only meaningful during stage='put'
+  startedAt?: number  // perf.now() when upload began; for elapsed-time
 }
 
 interface FundDocument {
@@ -98,7 +101,15 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
   }
 
   const uploadOne = async (qf: QueuedFile) => {
-    setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', error: undefined, progress: 0 } : f)))
+    const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const log = (msg: string, data?: unknown) => {
+      const elapsed = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0))
+      console.log(`[upload] ${qf.file.name} (+${elapsed}ms) ${msg}`, data ?? '')
+    }
+
+    setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', stage: 'url', progress: 0, startedAt: t0, error: undefined } : f)))
+    log('start — requesting signed URL')
+
     try {
       // Step 1: get signed upload URL
       const urlRes = await fetch('/api/upload-url', {
@@ -113,20 +124,26 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
       })
       const urlData = await urlRes.json()
       if (!urlRes.ok) {
+        log('signed URL request FAILED', urlData)
         setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: urlData.error ?? 'Failed to get upload URL' } : f)))
         return
       }
+      log('signed URL received, starting PUT')
 
       // Step 2: PUT file directly to Supabase Storage with progress
+      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, stage: 'put', progress: 0 } : f)))
       const putRes = await putWithProgress(urlData.signedUrl, qf.file, (pct) => {
         setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, progress: pct } : f)))
       })
       if (!putRes.ok) {
+        log(`PUT FAILED (status ${putRes.status})`, putRes.text)
         setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: putRes.text || `Storage upload failed (${putRes.status})` } : f)))
         return
       }
+      log('PUT complete, finalizing')
 
       // Step 3: record the upload in the database
+      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, stage: 'finalize', progress: 100 } : f)))
       const completeRes = await fetch('/api/upload-complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,13 +157,16 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
       })
       const completeData = await completeRes.json()
       if (!completeRes.ok) {
+        log('finalize FAILED', completeData)
         setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: completeData.error ?? 'Failed to record upload' } : f)))
       } else {
+        log('DONE')
         setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'done' } : f)))
         onUpload(completeData as FundDocument)
       }
-    } catch {
-      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: 'Network error' } : f)))
+    } catch (e) {
+      log('unexpected error', e)
+      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: e instanceof Error ? e.message : 'Network error' } : f)))
     }
   }
 
@@ -219,7 +239,7 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
                 ))}
               </select>
 
-              <div className="flex-shrink-0 w-[110px] flex flex-col items-end gap-1">
+              <div className="flex-shrink-0 w-[160px] flex flex-col items-end gap-1">
                 <span
                   className={`text-xs tracking-widest ${
                     qf.status === 'done'
@@ -233,20 +253,24 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
                 >
                   {qf.status === 'done'
                     ? 'DONE'
-                    : qf.status === 'uploading'
-                    ? qf.progress != null
-                      ? `UPLOADING ${qf.progress}%`
-                      : 'UPLOADING'
                     : qf.status === 'error'
                     ? 'ERROR'
+                    : qf.status === 'uploading'
+                    ? qf.stage === 'url'
+                      ? 'REQUESTING URL…'
+                      : qf.stage === 'put'
+                      ? `UPLOADING ${qf.progress ?? 0}%`
+                      : qf.stage === 'finalize'
+                      ? 'FINALIZING…'
+                      : 'STARTING…'
                     : 'QUEUED'}
                 </span>
-                {qf.status === 'uploading' && qf.progress != null && (
+                {qf.status === 'uploading' && (
                   <div style={{ height: 2, background: '#1a1a1a', width: '100%' }}>
                     <div
                       style={{
                         height: '100%',
-                        width: `${qf.progress}%`,
+                        width: `${qf.stage === 'finalize' ? 100 : qf.progress ?? 0}%`,
                         background: '#C9A84C',
                         transition: 'width 0.2s linear',
                       }}
