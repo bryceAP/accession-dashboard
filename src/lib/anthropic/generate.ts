@@ -12,8 +12,56 @@ interface GenerateParams {
   documents: Array<PdfDocument | TextDocument>;
 }
 
-const nullableString = { type: ["string", "null"] } as const;
-const nullableNumber = { type: ["number", "null"] } as const;
+const stringField = { type: "string" } as const;
+const numberField = { type: "number" } as const;
+
+// Fields the model may omit when no data is available. We backfill `null` so
+// the FundReport contract (string | null / number | null) is preserved without
+// adding nullable unions to the schema (Anthropic structured outputs caps
+// union-typed parameters at 16; nullability counts as a union).
+const NULLABLE_FUND_SNAPSHOT = [
+  "inception_date",
+  "fund_size_m",
+  "nav_per_share",
+  "distribution_rate_annualized_pct",
+  "management_fee_pct",
+  "performance_fee_pct",
+  "hurdle_rate_pct",
+  "minimum_investment",
+  "liquidity_terms",
+  "leverage_target",
+] as const;
+
+const NULLABLE_CREDIT_METRICS = [
+  "weighted_avg_yield_pct",
+  "pik_pct",
+  "bsl_clo_exposure_pct",
+  "senior_secured_pct",
+  "floating_rate_pct",
+  "avg_ebitda_m",
+  "interest_coverage_ratio",
+  "fixed_charge_ratio",
+  "ltv_pct",
+  "deployed_pct",
+  "non_accrual_pct",
+  "number_of_portfolio_companies",
+  "avg_loan_size_m",
+  "net_leverage_turns",
+] as const;
+
+const NULLABLE_PERFORMANCE = [
+  "ytd_pct",
+  "one_year_pct",
+  "three_year_pct",
+  "five_year_pct",
+  "since_inception_pct",
+  "benchmark_ytd_pct",
+  "benchmark_one_year_pct",
+  "benchmark_three_year_pct",
+  "benchmark_since_inception_pct",
+  "benchmark_name",
+  "as_of_date",
+] as const;
 
 const FUND_REPORT_SCHEMA = {
   type: "object",
@@ -34,106 +82,61 @@ const FUND_REPORT_SCHEMA = {
     fund_snapshot: {
       type: "object",
       additionalProperties: false,
-      required: [
-        "fund_name",
-        "manager",
-        "strategy_label",
-        "structure",
-        "inception_date",
-        "fund_size_m",
-        "nav_per_share",
-        "distribution_rate_annualized_pct",
-        "management_fee_pct",
-        "performance_fee_pct",
-        "hurdle_rate_pct",
-        "minimum_investment",
-        "liquidity_terms",
-        "leverage_target",
-      ],
+      required: ["fund_name", "manager", "strategy_label", "structure"],
       properties: {
-        fund_name: { type: "string" },
-        manager: { type: "string" },
-        strategy_label: { type: "string" },
-        structure: { type: "string" },
-        inception_date: nullableString,
-        fund_size_m: nullableNumber,
-        nav_per_share: nullableNumber,
-        distribution_rate_annualized_pct: nullableNumber,
-        management_fee_pct: nullableNumber,
-        performance_fee_pct: nullableNumber,
-        hurdle_rate_pct: nullableNumber,
-        minimum_investment: nullableNumber,
-        liquidity_terms: nullableString,
-        leverage_target: nullableString,
+        fund_name: stringField,
+        manager: stringField,
+        strategy_label: stringField,
+        structure: stringField,
+        inception_date: stringField,
+        fund_size_m: numberField,
+        nav_per_share: numberField,
+        distribution_rate_annualized_pct: numberField,
+        management_fee_pct: numberField,
+        performance_fee_pct: numberField,
+        hurdle_rate_pct: numberField,
+        minimum_investment: numberField,
+        liquidity_terms: stringField,
+        leverage_target: stringField,
       },
     },
     credit_metrics: {
       type: "object",
       additionalProperties: false,
-      required: [
-        "weighted_avg_yield_pct",
-        "pik_pct",
-        "bsl_clo_exposure_pct",
-        "senior_secured_pct",
-        "floating_rate_pct",
-        "avg_ebitda_m",
-        "interest_coverage_ratio",
-        "fixed_charge_ratio",
-        "ltv_pct",
-        "deployed_pct",
-        "non_accrual_pct",
-        "number_of_portfolio_companies",
-        "avg_loan_size_m",
-        "net_leverage_turns",
-      ],
+      required: [],
       properties: {
-        weighted_avg_yield_pct: nullableNumber,
-        pik_pct: nullableNumber,
-        bsl_clo_exposure_pct: nullableNumber,
-        senior_secured_pct: nullableNumber,
-        floating_rate_pct: nullableNumber,
-        avg_ebitda_m: nullableNumber,
-        interest_coverage_ratio: nullableNumber,
-        fixed_charge_ratio: nullableNumber,
-        ltv_pct: nullableNumber,
-        deployed_pct: nullableNumber,
-        non_accrual_pct: nullableNumber,
-        number_of_portfolio_companies: nullableNumber,
-        avg_loan_size_m: nullableNumber,
-        net_leverage_turns: nullableNumber,
+        weighted_avg_yield_pct: numberField,
+        pik_pct: numberField,
+        bsl_clo_exposure_pct: numberField,
+        senior_secured_pct: numberField,
+        floating_rate_pct: numberField,
+        avg_ebitda_m: numberField,
+        interest_coverage_ratio: numberField,
+        fixed_charge_ratio: numberField,
+        ltv_pct: numberField,
+        deployed_pct: numberField,
+        non_accrual_pct: numberField,
+        number_of_portfolio_companies: numberField,
+        avg_loan_size_m: numberField,
+        net_leverage_turns: numberField,
       },
     },
     performance: {
       type: "object",
       additionalProperties: false,
-      required: [
-        "ytd_pct",
-        "one_year_pct",
-        "three_year_pct",
-        "five_year_pct",
-        "since_inception_pct",
-        "benchmark_ytd_pct",
-        "benchmark_one_year_pct",
-        "benchmark_three_year_pct",
-        "benchmark_since_inception_pct",
-        "benchmark_name",
-        "as_of_date",
-        "nav_history",
-        "fund_size_history",
-        "distribution_history",
-      ],
+      required: ["nav_history", "fund_size_history", "distribution_history"],
       properties: {
-        ytd_pct: nullableNumber,
-        one_year_pct: nullableNumber,
-        three_year_pct: nullableNumber,
-        five_year_pct: nullableNumber,
-        since_inception_pct: nullableNumber,
-        benchmark_ytd_pct: nullableNumber,
-        benchmark_one_year_pct: nullableNumber,
-        benchmark_three_year_pct: nullableNumber,
-        benchmark_since_inception_pct: nullableNumber,
-        benchmark_name: nullableString,
-        as_of_date: nullableString,
+        ytd_pct: numberField,
+        one_year_pct: numberField,
+        three_year_pct: numberField,
+        five_year_pct: numberField,
+        since_inception_pct: numberField,
+        benchmark_ytd_pct: numberField,
+        benchmark_one_year_pct: numberField,
+        benchmark_three_year_pct: numberField,
+        benchmark_since_inception_pct: numberField,
+        benchmark_name: stringField,
+        as_of_date: stringField,
         nav_history: {
           type: "array",
           items: {
@@ -141,8 +144,8 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["date", "nav"],
             properties: {
-              date: { type: "string" },
-              nav: { type: "number" },
+              date: stringField,
+              nav: numberField,
             },
           },
         },
@@ -153,8 +156,8 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["date", "aum_m"],
             properties: {
-              date: { type: "string" },
-              aum_m: { type: "number" },
+              date: stringField,
+              aum_m: numberField,
             },
           },
         },
@@ -165,9 +168,9 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["date", "amount", "type"],
             properties: {
-              date: { type: "string" },
-              amount: { type: "number" },
-              type: { type: "string" },
+              date: stringField,
+              amount: numberField,
+              type: stringField,
             },
           },
         },
@@ -190,8 +193,8 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["name", "pct"],
             properties: {
-              name: { type: "string" },
-              pct: { type: "number" },
+              name: stringField,
+              pct: numberField,
             },
           },
         },
@@ -202,8 +205,8 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["rating", "pct"],
             properties: {
-              rating: { type: "string" },
-              pct: { type: "number" },
+              rating: stringField,
+              pct: numberField,
             },
           },
         },
@@ -214,8 +217,8 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["type", "pct"],
             properties: {
-              type: { type: "string" },
-              pct: { type: "number" },
+              type: stringField,
+              pct: numberField,
             },
           },
         },
@@ -226,22 +229,22 @@ const FUND_REPORT_SCHEMA = {
             additionalProperties: false,
             required: ["region", "pct"],
             properties: {
-              region: { type: "string" },
-              pct: { type: "number" },
+              region: stringField,
+              pct: numberField,
             },
           },
         },
       },
     },
-    merits: { type: "array", items: { type: "string" } },
-    risks: { type: "array", items: { type: "string" } },
+    merits: { type: "array", items: stringField },
+    risks: { type: "array", items: stringField },
     suitability: {
       type: "object",
       additionalProperties: false,
       required: ["suitable_for", "not_suitable_for"],
       properties: {
-        suitable_for: { type: "array", items: { type: "string" } },
-        not_suitable_for: { type: "array", items: { type: "string" } },
+        suitable_for: { type: "array", items: stringField },
+        not_suitable_for: { type: "array", items: stringField },
       },
     },
     report_sections: {
@@ -257,13 +260,13 @@ const FUND_REPORT_SCHEMA = {
         "conclusion",
       ],
       properties: {
-        fund_overview: { type: "string" },
-        investment_strategy: { type: "string" },
-        portfolio_analysis: { type: "string" },
-        performance_analysis: { type: "string" },
-        risk_analysis: { type: "string" },
-        fee_analysis: { type: "string" },
-        conclusion: { type: "string" },
+        fund_overview: stringField,
+        investment_strategy: stringField,
+        portfolio_analysis: stringField,
+        performance_analysis: stringField,
+        risk_analysis: stringField,
+        fee_analysis: stringField,
+        conclusion: stringField,
       },
     },
     sources: {
@@ -273,8 +276,8 @@ const FUND_REPORT_SCHEMA = {
         additionalProperties: false,
         required: ["id", "name", "url", "reliability"],
         properties: {
-          id: { type: "string" },
-          name: { type: "string" },
+          id: stringField,
+          name: stringField,
           url: { type: "null" },
           reliability: { type: "string", enum: ["high", "medium", "low"] },
         },
@@ -285,12 +288,28 @@ const FUND_REPORT_SCHEMA = {
       additionalProperties: false,
       required: ["completeness_pct", "null_fields"],
       properties: {
-        completeness_pct: { type: "number" },
-        null_fields: { type: "array", items: { type: "string" } },
+        completeness_pct: numberField,
+        null_fields: { type: "array", items: stringField },
       },
     },
   },
 } as const;
+
+function backfillNulls(report: FundReport): FundReport {
+  const fs = report.fund_snapshot as unknown as Record<string, unknown>;
+  for (const key of NULLABLE_FUND_SNAPSHOT) {
+    if (fs[key] === undefined) fs[key] = null;
+  }
+  const cm = report.credit_metrics as unknown as Record<string, unknown>;
+  for (const key of NULLABLE_CREDIT_METRICS) {
+    if (cm[key] === undefined) cm[key] = null;
+  }
+  const perf = report.performance as unknown as Record<string, unknown>;
+  for (const key of NULLABLE_PERFORMANCE) {
+    if (perf[key] === undefined) perf[key] = null;
+  }
+  return report;
+}
 
 export async function generateFundReport({
   fund_name,
@@ -330,7 +349,7 @@ export async function generateFundReport({
     type: "text",
     text: `${fundLine}\n\nAnalyze the ${documents.length} attached document${
       documents.length !== 1 ? "s" : ""
-    } and generate a complete private credit fund research report. All data must come exclusively from the attached documents.`,
+    } and generate a complete private credit fund research report. All data must come exclusively from the attached documents. When a value is not present in the documents, omit that field entirely rather than guessing.`,
   });
 
   const stream = anthropic.messages.stream({
@@ -367,7 +386,8 @@ export async function generateFundReport({
     .join("");
 
   try {
-    return JSON.parse(text) as FundReport;
+    const parsed = JSON.parse(text) as FundReport;
+    return backfillNulls(parsed);
   } catch (e) {
     console.error("Raw Claude response:", text);
     throw e;
