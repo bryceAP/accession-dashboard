@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
+import { DOC_TYPES as ALL_DOC_TYPES } from '@/lib/docCoverage'
+import { DocCoveragePanel } from '@/components/dashboard/DocCoveragePanel'
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 
@@ -42,7 +44,7 @@ interface Run {
   created_at: string | null
 }
 
-const DOC_TYPES = ['Fact Sheet', 'PPM', 'Tear Sheet', 'Annual Report', 'Other']
+const DOC_TYPES = ALL_DOC_TYPES
 const STRATEGIES = ['Private Credit']
 
 const STATUS_COLOR: Record<string, string> = {
@@ -392,6 +394,8 @@ export default function FundDetailPage() {
               + UPLOAD
             </button>
           </div>
+
+          <DocCoveragePanel uploadedTypes={documents.map(d => d.document_type)} />
 
           {documents.length === 0 ? (
             <div className="border border-[#1e1e1e] px-6 py-10 text-center">
