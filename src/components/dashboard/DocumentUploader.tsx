@@ -37,7 +37,12 @@ const ACCEPT = {
   'application/pdf': ['.pdf'],
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  // SEC EDGAR 10-Ks/10-Qs ship as .htm — much smaller than a print-to-PDF
+  // version and preserve table structure better through extraction.
+  'text/html': ['.htm', '.html'],
 }
+
+const UPLOAD_CONCURRENCY = 3
 
 export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderProps) {
   const [queue, setQueue] = useState<QueuedFile[]>([])
@@ -70,68 +75,81 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
     setQueue((prev) => prev.filter((f) => f.id !== id))
   }
 
+  const uploadOne = async (qf: QueuedFile) => {
+    setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', error: undefined } : f)))
+    try {
+      // Step 1: get signed upload URL
+      const urlRes = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fund_id: fundId,
+          file_name: qf.file.name,
+          file_size: qf.file.size,
+          document_type: qf.docType,
+        }),
+      })
+      const urlData = await urlRes.json()
+      if (!urlRes.ok) {
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: urlData.error ?? 'Failed to get upload URL' } : f)))
+        return
+      }
+
+      // Step 2: PUT file directly to Supabase Storage
+      const putRes = await fetch(urlData.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': qf.file.type || 'application/octet-stream' },
+        body: qf.file,
+      })
+      if (!putRes.ok) {
+        const msg = await putRes.text().catch(() => 'Storage upload failed')
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: msg } : f)))
+        return
+      }
+
+      // Step 3: record the upload in the database
+      const completeRes = await fetch('/api/upload-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fund_id: fundId,
+          file_name: qf.file.name,
+          file_path: urlData.path,
+          document_type: qf.docType,
+          file_size: qf.file.size,
+        }),
+      })
+      const completeData = await completeRes.json()
+      if (!completeRes.ok) {
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: completeData.error ?? 'Failed to record upload' } : f)))
+      } else {
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'done' } : f)))
+        onUpload(completeData as FundDocument)
+      }
+    } catch {
+      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: 'Network error' } : f)))
+    }
+  }
+
   const uploadAll = async () => {
     const pending = queue.filter((f) => f.status === 'queued' || f.status === 'error')
     if (pending.length === 0) return
 
     setUploading(true)
 
-    for (const qf of pending) {
-      setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', error: undefined } : f)))
-
-      try {
-        // Step 1: get signed upload URL
-        const urlRes = await fetch('/api/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fund_id: fundId,
-            file_name: qf.file.name,
-            file_size: qf.file.size,
-            document_type: qf.docType,
-          }),
-        })
-        const urlData = await urlRes.json()
-        if (!urlRes.ok) {
-          setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: urlData.error ?? 'Failed to get upload URL' } : f)))
-          continue
-        }
-
-        // Step 2: PUT file directly to Supabase Storage
-        const putRes = await fetch(urlData.signedUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': qf.file.type || 'application/octet-stream' },
-          body: qf.file,
-        })
-        if (!putRes.ok) {
-          const msg = await putRes.text().catch(() => 'Storage upload failed')
-          setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: msg } : f)))
-          continue
-        }
-
-        // Step 3: record the upload in the database
-        const completeRes = await fetch('/api/upload-complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fund_id: fundId,
-            file_name: qf.file.name,
-            file_path: urlData.path,
-            document_type: qf.docType,
-            file_size: qf.file.size,
-          }),
-        })
-        const completeData = await completeRes.json()
-        if (!completeRes.ok) {
-          setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: completeData.error ?? 'Failed to record upload' } : f)))
-        } else {
-          setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'done' } : f)))
-          onUpload(completeData as FundDocument)
-        }
-      } catch {
-        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: 'Network error' } : f)))
+    // Bounded concurrency — N parallel workers pulling from the queue.
+    // Keeps the network pipe full without spawning a request per file
+    // (which can fight for bandwidth and trip browser per-host limits).
+    let index = 0
+    const worker = async () => {
+      while (index < pending.length) {
+        const qf = pending[index++]
+        await uploadOne(qf)
       }
     }
+    await Promise.all(
+      Array.from({ length: Math.min(UPLOAD_CONCURRENCY, pending.length) }, worker),
+    )
 
     setUploading(false)
   }
