@@ -12,44 +12,28 @@ interface GenerateParams {
   documents: Array<PdfDocument | TextDocument>;
 }
 
+// Anthropic structured outputs caps both union-typed parameters (16) and
+// optional parameters (24). FundReport has 35 nullable scalar fields, so we
+// split: 16 get nullable-required (union with null), 19 get optional
+// (single-typed, omitted when missing). We backfill `null` for the omitted
+// ones so the FundReport contract (T | null) holds either way.
+const nullableString = { type: ["string", "null"] } as const;
+const nullableNumber = { type: ["number", "null"] } as const;
 const stringField = { type: "string" } as const;
 const numberField = { type: "number" } as const;
 
-// Fields the model may omit when no data is available. We backfill `null` so
-// the FundReport contract (string | null / number | null) is preserved without
-// adding nullable unions to the schema (Anthropic structured outputs caps
-// union-typed parameters at 16; nullability counts as a union).
-const NULLABLE_FUND_SNAPSHOT = [
-  "inception_date",
-  "fund_size_m",
-  "nav_per_share",
-  "distribution_rate_annualized_pct",
-  "management_fee_pct",
-  "performance_fee_pct",
-  "hurdle_rate_pct",
-  "minimum_investment",
-  "liquidity_terms",
-  "leverage_target",
-] as const;
-
-const NULLABLE_CREDIT_METRICS = [
-  "weighted_avg_yield_pct",
+const OPTIONAL_CREDIT_METRICS = [
   "pik_pct",
   "bsl_clo_exposure_pct",
-  "senior_secured_pct",
-  "floating_rate_pct",
   "avg_ebitda_m",
   "interest_coverage_ratio",
   "fixed_charge_ratio",
-  "ltv_pct",
-  "deployed_pct",
   "non_accrual_pct",
-  "number_of_portfolio_companies",
   "avg_loan_size_m",
   "net_leverage_turns",
 ] as const;
 
-const NULLABLE_PERFORMANCE = [
+const OPTIONAL_PERFORMANCE = [
   "ytd_pct",
   "one_year_pct",
   "three_year_pct",
@@ -82,41 +66,66 @@ const FUND_REPORT_SCHEMA = {
     fund_snapshot: {
       type: "object",
       additionalProperties: false,
-      required: ["fund_name", "manager", "strategy_label", "structure"],
+      required: [
+        "fund_name",
+        "manager",
+        "strategy_label",
+        "structure",
+        "inception_date",
+        "fund_size_m",
+        "nav_per_share",
+        "distribution_rate_annualized_pct",
+        "management_fee_pct",
+        "performance_fee_pct",
+        "hurdle_rate_pct",
+        "minimum_investment",
+        "liquidity_terms",
+        "leverage_target",
+      ],
       properties: {
         fund_name: stringField,
         manager: stringField,
         strategy_label: stringField,
         structure: stringField,
-        inception_date: stringField,
-        fund_size_m: numberField,
-        nav_per_share: numberField,
-        distribution_rate_annualized_pct: numberField,
-        management_fee_pct: numberField,
-        performance_fee_pct: numberField,
-        hurdle_rate_pct: numberField,
-        minimum_investment: numberField,
-        liquidity_terms: stringField,
-        leverage_target: stringField,
+        // 10 nullable-required (union)
+        inception_date: nullableString,
+        fund_size_m: nullableNumber,
+        nav_per_share: nullableNumber,
+        distribution_rate_annualized_pct: nullableNumber,
+        management_fee_pct: nullableNumber,
+        performance_fee_pct: nullableNumber,
+        hurdle_rate_pct: nullableNumber,
+        minimum_investment: nullableNumber,
+        liquidity_terms: nullableString,
+        leverage_target: nullableString,
       },
     },
     credit_metrics: {
       type: "object",
       additionalProperties: false,
-      required: [],
+      required: [
+        // 6 nullable-required (union) — most commonly cited metrics
+        "weighted_avg_yield_pct",
+        "senior_secured_pct",
+        "floating_rate_pct",
+        "ltv_pct",
+        "deployed_pct",
+        "number_of_portfolio_companies",
+      ],
       properties: {
-        weighted_avg_yield_pct: numberField,
+        weighted_avg_yield_pct: nullableNumber,
+        senior_secured_pct: nullableNumber,
+        floating_rate_pct: nullableNumber,
+        ltv_pct: nullableNumber,
+        deployed_pct: nullableNumber,
+        number_of_portfolio_companies: nullableNumber,
+        // 8 optional (omitted when unknown)
         pik_pct: numberField,
         bsl_clo_exposure_pct: numberField,
-        senior_secured_pct: numberField,
-        floating_rate_pct: numberField,
         avg_ebitda_m: numberField,
         interest_coverage_ratio: numberField,
         fixed_charge_ratio: numberField,
-        ltv_pct: numberField,
-        deployed_pct: numberField,
         non_accrual_pct: numberField,
-        number_of_portfolio_companies: numberField,
         avg_loan_size_m: numberField,
         net_leverage_turns: numberField,
       },
@@ -126,6 +135,7 @@ const FUND_REPORT_SCHEMA = {
       additionalProperties: false,
       required: ["nav_history", "fund_size_history", "distribution_history"],
       properties: {
+        // 11 optional (omitted when unknown)
         ytd_pct: numberField,
         one_year_pct: numberField,
         three_year_pct: numberField,
@@ -296,16 +306,12 @@ const FUND_REPORT_SCHEMA = {
 } as const;
 
 function backfillNulls(report: FundReport): FundReport {
-  const fs = report.fund_snapshot as unknown as Record<string, unknown>;
-  for (const key of NULLABLE_FUND_SNAPSHOT) {
-    if (fs[key] === undefined) fs[key] = null;
-  }
   const cm = report.credit_metrics as unknown as Record<string, unknown>;
-  for (const key of NULLABLE_CREDIT_METRICS) {
+  for (const key of OPTIONAL_CREDIT_METRICS) {
     if (cm[key] === undefined) cm[key] = null;
   }
   const perf = report.performance as unknown as Record<string, unknown>;
-  for (const key of NULLABLE_PERFORMANCE) {
+  for (const key of OPTIONAL_PERFORMANCE) {
     if (perf[key] === undefined) perf[key] = null;
   }
   return report;
@@ -349,7 +355,7 @@ export async function generateFundReport({
     type: "text",
     text: `${fundLine}\n\nAnalyze the ${documents.length} attached document${
       documents.length !== 1 ? "s" : ""
-    } and generate a complete private credit fund research report. All data must come exclusively from the attached documents. When a value is not present in the documents, omit that field entirely rather than guessing.`,
+    } and generate a complete private credit fund research report. All data must come exclusively from the attached documents. For required fields where no value is given in the documents, return null. For optional fields where no value is given, omit the field entirely.`,
   });
 
   const stream = anthropic.messages.stream({
