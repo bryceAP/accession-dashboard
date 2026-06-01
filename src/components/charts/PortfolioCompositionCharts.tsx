@@ -67,7 +67,10 @@ function MiniDonut({ title, data, height }: { title: string; data: Slice[]; heig
               contentStyle={tooltipContentStyle}
               itemStyle={{ ...tooltipItemStyle, color: chartTheme.bone }}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(v: any) => [typeof v === 'number' ? `${v.toFixed(1)}%` : String(v)]}
+              formatter={(v: any, name: any) => [
+                typeof v === 'number' ? `${v.toFixed(1)}%` : String(v),
+                String(name),
+              ]}
             />
           </PieChart>
         </ResponsiveContainer>
