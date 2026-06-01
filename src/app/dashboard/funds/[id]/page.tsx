@@ -277,7 +277,9 @@ export default function FundDetailPage() {
     // Stage 5: 80→95% slow crawl until API responds
     schedule(() => { setProgressStage('Finalizing analysis...'); setProgressPct(95); setProgressDuration(90) }, 26050)
 
-    const priorRunId = runs.length > 0 ? runs[0].id : undefined
+    // Only compare against the most recent COMPLETE prior run — skipping
+    // errored/pending ones whose structured_data is null/missing.
+    const priorRunId = runs.find(r => r.status === 'complete')?.id
     const res = await fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

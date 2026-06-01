@@ -263,19 +263,38 @@ export async function POST(request: Request) {
     ].filter(Boolean).join('\n\n')
 
     // Change detection
+    type PriorRun = { structured_data: unknown; created_at: string }
     let keyChanges = null
+    let priorRun: PriorRun | null = null
+
     if (prior_run_id) {
-      const { data: priorRun } = await supabase
+      const { data } = await supabase
         .from('dashboard_runs')
         .select('structured_data, created_at')
         .eq('id', prior_run_id)
         .single()
+      if (data?.structured_data) priorRun = data as PriorRun
+    }
 
-      if (priorRun?.structured_data) {
-        keyChanges = {
-          ...compareRuns(priorRun.structured_data as FundReport, report),
-          prior_run_date: priorRun.created_at as string,
-        }
+    // Fallback: if the requested prior run is missing structured_data (e.g. it
+    // errored), walk back to the most recent complete run for this fund.
+    if (!priorRun) {
+      const { data } = await supabase
+        .from('dashboard_runs')
+        .select('structured_data, created_at')
+        .eq('fund_id', fund_id)
+        .eq('status', 'complete')
+        .neq('id', run.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data?.structured_data) priorRun = data as PriorRun
+    }
+
+    if (priorRun) {
+      keyChanges = {
+        ...compareRuns(priorRun.structured_data as FundReport, report),
+        prior_run_date: priorRun.created_at,
       }
     }
 
