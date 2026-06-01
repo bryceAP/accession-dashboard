@@ -16,6 +16,7 @@ interface QueuedFile {
   docType: string
   status: UploadStatus
   error?: string
+  progress?: number // 0..100, set during the PUT
 }
 
 interface FundDocument {
@@ -75,8 +76,29 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
     setQueue((prev) => prev.filter((f) => f.id !== id))
   }
 
+  // XHR-based PUT so we get real upload-progress events for the bar.
+  // fetch() in browsers doesn't expose request-body upload progress.
+  const putWithProgress = (
+    url: string,
+    file: File,
+    onProgress: (pct: number) => void,
+  ): Promise<{ ok: boolean; status: number; text: string }> => {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('PUT', url)
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText })
+      xhr.onerror = () => resolve({ ok: false, status: 0, text: 'network error' })
+      xhr.onabort = () => resolve({ ok: false, status: 0, text: 'aborted' })
+      xhr.send(file)
+    })
+  }
+
   const uploadOne = async (qf: QueuedFile) => {
-    setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', error: undefined } : f)))
+    setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'uploading', error: undefined, progress: 0 } : f)))
     try {
       // Step 1: get signed upload URL
       const urlRes = await fetch('/api/upload-url', {
@@ -95,15 +117,12 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
         return
       }
 
-      // Step 2: PUT file directly to Supabase Storage
-      const putRes = await fetch(urlData.signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': qf.file.type || 'application/octet-stream' },
-        body: qf.file,
+      // Step 2: PUT file directly to Supabase Storage with progress
+      const putRes = await putWithProgress(urlData.signedUrl, qf.file, (pct) => {
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, progress: pct } : f)))
       })
       if (!putRes.ok) {
-        const msg = await putRes.text().catch(() => 'Storage upload failed')
-        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: msg } : f)))
+        setQueue((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'error', error: putRes.text || `Storage upload failed (${putRes.status})` } : f)))
         return
       }
 
@@ -200,25 +219,41 @@ export default function DocumentUploader({ fundId, onUpload }: DocumentUploaderP
                 ))}
               </select>
 
-              <span
-                className={`text-xs tracking-widest flex-shrink-0 w-[72px] text-right ${
-                  qf.status === 'done'
-                    ? 'text-emerald-500'
+              <div className="flex-shrink-0 w-[110px] flex flex-col items-end gap-1">
+                <span
+                  className={`text-xs tracking-widest ${
+                    qf.status === 'done'
+                      ? 'text-emerald-500'
+                      : qf.status === 'uploading'
+                      ? 'text-[#C9A84C]'
+                      : qf.status === 'error'
+                      ? 'text-red-500'
+                      : 'text-[#333333]'
+                  }`}
+                >
+                  {qf.status === 'done'
+                    ? 'DONE'
                     : qf.status === 'uploading'
-                    ? 'text-[#C9A84C]'
+                    ? qf.progress != null
+                      ? `UPLOADING ${qf.progress}%`
+                      : 'UPLOADING'
                     : qf.status === 'error'
-                    ? 'text-red-500'
-                    : 'text-[#333333]'
-                }`}
-              >
-                {qf.status === 'done'
-                  ? 'DONE'
-                  : qf.status === 'uploading'
-                  ? 'UPLOADING'
-                  : qf.status === 'error'
-                  ? 'ERROR'
-                  : 'QUEUED'}
-              </span>
+                    ? 'ERROR'
+                    : 'QUEUED'}
+                </span>
+                {qf.status === 'uploading' && qf.progress != null && (
+                  <div style={{ height: 2, background: '#1a1a1a', width: '100%' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${qf.progress}%`,
+                        background: '#C9A84C',
+                        transition: 'width 0.2s linear',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
 
               {qf.status !== 'uploading' && (
                 <button
