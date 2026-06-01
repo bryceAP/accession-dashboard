@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { JetBrains_Mono } from 'next/font/google'
 import { format } from 'date-fns'
-import { DOC_TYPES as ALL_DOC_TYPES } from '@/lib/docCoverage'
 import { DocCoveragePanel } from '@/components/dashboard/DocCoveragePanel'
+import DocumentUploader from '@/components/dashboard/DocumentUploader'
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 
@@ -44,7 +44,6 @@ interface Run {
   created_at: string | null
 }
 
-const DOC_TYPES = ALL_DOC_TYPES
 const STRATEGIES = ['Private Credit']
 
 const STATUS_COLOR: Record<string, string> = {
@@ -76,13 +75,8 @@ export default function FundDetailPage() {
   const [fetchError, setFetchError] = useState('')
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
 
-  // Upload modal
+  // Upload modal — DocumentUploader handles all per-file state internally.
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadType, setUploadType] = useState('Fact Sheet')
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Run analysis modal
   const [runOpen, setRunOpen] = useState(false)
@@ -143,35 +137,7 @@ export default function FundDetailPage() {
   /* ─── Upload document ───────────────────────────────────────── */
 
   const openUpload = () => {
-    setUploadFile(null)
-    setUploadType('Fact Sheet')
-    setUploadError('')
     setUploadOpen(true)
-  }
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!uploadFile) { setUploadError('Please select a PDF file'); return }
-    setUploading(true)
-    setUploadError('')
-
-    const formData = new FormData()
-    formData.append('file', uploadFile)
-    formData.append('fund_id', id)
-    formData.append('document_type', uploadType)
-
-    const res = await fetch('/api/documents', { method: 'POST', body: formData })
-    const data = await res.json()
-
-    if (!res.ok) {
-      setUploadError(data.error ?? 'Upload failed')
-      setUploading(false)
-      return
-    }
-
-    setDocuments((prev) => [data, ...prev])
-    setUploading(false)
-    setUploadOpen(false)
   }
 
   const handleDeleteDoc = async (docId: string) => {
@@ -511,64 +477,26 @@ export default function FundDetailPage() {
         </section>
       </div>
 
-      {/* Upload document modal */}
+      {/* Upload document modal — uses signed-URL → direct-PUT to Supabase
+          (no 4.5 MB Vercel body limit, multi-file, drag-drop, live progress) */}
       {uploadOpen && (
-        <Overlay onClose={() => !uploading && setUploadOpen(false)}>
-          <div className="border-b border-[#2a2a2a] px-8 py-5">
-            <p className="text-[#E8E0D0] text-xs tracking-widest">UPLOAD DOCUMENT</p>
+        <Overlay onClose={() => setUploadOpen(false)}>
+          <div className="border-b border-[#2a2a2a] px-8 py-5 flex items-center justify-between">
+            <p className="text-[#E8E0D0] text-xs tracking-widest">UPLOAD DOCUMENTS</p>
+            <button
+              type="button"
+              onClick={() => setUploadOpen(false)}
+              className="text-[#555555] hover:text-[#E8E0D0] text-xs tracking-widest transition-colors"
+            >
+              CLOSE ✕
+            </button>
           </div>
-          <form onSubmit={handleUpload} className="px-8 py-6 space-y-5">
-            <Field label="DOCUMENT TYPE">
-              <select
-                value={uploadType}
-                onChange={(e) => setUploadType(e.target.value)}
-                className="w-full bg-[#0D0D0D] border border-[#2a2a2a] text-[#E8E0D0] text-xs px-3 py-2.5 outline-none focus:border-[#3a3a3a] rounded-none appearance-none"
-              >
-                {DOC_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="FILE">
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.htm,.html"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border border-dashed border-[#2a2a2a] hover:border-[#3a3a3a] text-[#555555] hover:text-[#999999] text-xs tracking-widest py-4 transition-colors text-center"
-                >
-                  {uploadFile ? uploadFile.name : 'SELECT PDF →'}
-                </button>
-                {uploadFile && (
-                  <p className="text-[#444444] text-xs mt-1.5">
-                    {(uploadFile.size / 1024).toFixed(0)} KB
-                  </p>
-                )}
-              </div>
-            </Field>
-            {uploadError && <p className="text-red-500 text-xs">{uploadError}</p>}
-            <div className="flex gap-3 pt-1">
-              <button
-                type="submit"
-                disabled={uploading}
-                className="bg-[#C9A84C] text-black text-xs tracking-widest px-6 py-2.5 hover:bg-[#b8973a] transition-colors disabled:opacity-50"
-              >
-                {uploading ? 'UPLOADING...' : 'UPLOAD'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadOpen(false)}
-                disabled={uploading}
-                className="text-[#555555] hover:text-[#999999] text-xs tracking-widest px-4 py-2.5 transition-colors disabled:opacity-40"
-              >
-                CANCEL
-              </button>
-            </div>
-          </form>
+          <div className="px-8 py-6">
+            <DocumentUploader
+              fundId={id}
+              onUpload={(doc) => setDocuments((prev) => [doc, ...prev])}
+            />
+          </div>
         </Overlay>
       )}
 
