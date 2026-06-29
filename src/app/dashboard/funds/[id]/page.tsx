@@ -142,7 +142,12 @@ export default function FundDetailPage() {
 
   const handleDeleteDoc = async (docId: string) => {
     if (!confirm('Delete this document?')) return
-    await fetch(`/api/documents/${docId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error ?? 'Failed to delete document')
+      return
+    }
     setDocuments((prev) => prev.filter((d) => d.id !== docId))
   }
 
@@ -208,7 +213,12 @@ export default function FundDetailPage() {
 
   const handleDeleteRun = async (runId: string) => {
     if (!confirm('Delete this report?')) return
-    await fetch(`/api/runs/${runId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/runs/${runId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error ?? 'Failed to delete report')
+      return
+    }
     setRuns((prev) => prev.filter((r) => r.id !== runId))
     if (expandedRunId === runId) setExpandedRunId(null)
   }

@@ -8,14 +8,43 @@ import { format } from 'date-fns'
 import type { FundReport, ReportSections } from '@/types'
 import { DISCLAIMER } from '@/lib/anthropic/prompts'
 import type { KeyChanges } from '@/lib/compareRuns'
+import dynamic from 'next/dynamic'
 import { ChangeSummary } from '@/components/dashboard/ChangeSummary'
-import { PerformanceTable } from '@/components/charts/PerformanceTable'
-import { FundSizeChart } from '@/components/charts/FundSizeChart'
-import { FundFlowsChart } from '@/components/charts/FundFlowsChart'
-import { CreditMetricsGrid } from '@/components/charts/CreditMetricsGrid'
-import { PortfolioCompositionCharts } from '@/components/charts/PortfolioCompositionCharts'
-import { DistributionHistoryChart } from '@/components/charts/DistributionHistoryChart'
-import { InflowsOutflowsChart } from '@/components/charts/InflowsOutflowsChart'
+
+const chartLoader = () => (
+  <div className="border border-[#1e1e1e] py-8 flex items-center justify-center">
+    <span className="text-[#333] text-xs tracking-widest">LOADING...</span>
+  </div>
+)
+
+const PerformanceTable = dynamic(
+  () => import('@/components/charts/PerformanceTable').then(m => m.PerformanceTable),
+  { ssr: false, loading: chartLoader },
+)
+const FundSizeChart = dynamic(
+  () => import('@/components/charts/FundSizeChart').then(m => m.FundSizeChart),
+  { ssr: false, loading: chartLoader },
+)
+const FundFlowsChart = dynamic(
+  () => import('@/components/charts/FundFlowsChart').then(m => m.FundFlowsChart),
+  { ssr: false, loading: chartLoader },
+)
+const CreditMetricsGrid = dynamic(
+  () => import('@/components/charts/CreditMetricsGrid').then(m => m.CreditMetricsGrid),
+  { ssr: false, loading: chartLoader },
+)
+const PortfolioCompositionCharts = dynamic(
+  () => import('@/components/charts/PortfolioCompositionCharts').then(m => m.PortfolioCompositionCharts),
+  { ssr: false, loading: chartLoader },
+)
+const DistributionHistoryChart = dynamic(
+  () => import('@/components/charts/DistributionHistoryChart').then(m => m.DistributionHistoryChart),
+  { ssr: false, loading: chartLoader },
+)
+const InflowsOutflowsChart = dynamic(
+  () => import('@/components/charts/InflowsOutflowsChart').then(m => m.InflowsOutflowsChart),
+  { ssr: false, loading: chartLoader },
+)
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 const garamond = Cormorant_Garamond({

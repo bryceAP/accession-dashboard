@@ -7,12 +7,38 @@ import { JetBrains_Mono, Cormorant_Garamond } from 'next/font/google'
 import { format } from 'date-fns'
 import type { FundReport, ReportSections } from '@/types'
 import { DISCLAIMER } from '@/lib/anthropic/prompts'
-import { PerformanceTable } from '@/components/charts/PerformanceTable'
-import { ReturnHistogram } from '@/components/charts/ReturnHistogram'
-import { CreditMetricsGrid } from '@/components/charts/CreditMetricsGrid'
-import { PortfolioCompositionCharts } from '@/components/charts/PortfolioCompositionCharts'
-import { DistributionHistoryChart } from '@/components/charts/DistributionHistoryChart'
-import { InflowsOutflowsChart } from '@/components/charts/InflowsOutflowsChart'
+import dynamic from 'next/dynamic'
+
+const chartLoader = () => (
+  <div className="border border-[#1e1e1e] py-8 flex items-center justify-center">
+    <span className="text-[#333] text-xs tracking-widest">LOADING...</span>
+  </div>
+)
+
+const PerformanceTable = dynamic(
+  () => import('@/components/charts/PerformanceTable').then(m => m.PerformanceTable),
+  { ssr: false, loading: chartLoader },
+)
+const ReturnHistogram = dynamic(
+  () => import('@/components/charts/ReturnHistogram').then(m => m.ReturnHistogram),
+  { ssr: false, loading: chartLoader },
+)
+const CreditMetricsGrid = dynamic(
+  () => import('@/components/charts/CreditMetricsGrid').then(m => m.CreditMetricsGrid),
+  { ssr: false, loading: chartLoader },
+)
+const PortfolioCompositionCharts = dynamic(
+  () => import('@/components/charts/PortfolioCompositionCharts').then(m => m.PortfolioCompositionCharts),
+  { ssr: false, loading: chartLoader },
+)
+const DistributionHistoryChart = dynamic(
+  () => import('@/components/charts/DistributionHistoryChart').then(m => m.DistributionHistoryChart),
+  { ssr: false, loading: chartLoader },
+)
+const InflowsOutflowsChart = dynamic(
+  () => import('@/components/charts/InflowsOutflowsChart').then(m => m.InflowsOutflowsChart),
+  { ssr: false, loading: chartLoader },
+)
 
 const mono = JetBrains_Mono({ subsets: ['latin'] })
 const garamond = Cormorant_Garamond({ subsets: ['latin'], weight: ['300', '400', '500'], display: 'swap' })
