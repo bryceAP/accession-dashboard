@@ -8,6 +8,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'] })
 
 const NAV_LINKS = [
   { label: 'FUNDS', href: '/dashboard/funds' },
+  { label: 'LIVE', href: '/dashboard/live' },
   { label: 'REPORTS', href: '/dashboard/reports' },
   { label: 'DOCUMENTS', href: '/dashboard/documents' },
 ]
